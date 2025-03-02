@@ -32,102 +32,97 @@ jobs:
             build-mode: manual
 
     steps:
-      - name: 📥 Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Ensures full history for accurate analysis
+    - name: 📥 Checkout Repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Ensures full history for accurate analysis
 
-      - name: 🔍 Check for Java/Kotlin Source Files
-        id: check_files
-        run: |
-          FILE_COUNT=$(find . -name "*.java" -o -name "*.kt" | wc -l)
-          if [[ "$FILE_COUNT" -eq 0 ]]; then
-            echo "⚠️ No Java/Kotlin files found. Skipping CodeQL analysis."
-            echo "skip_codeql=true" >> $GITHUB_ENV
-          else
-            echo "✅ Found $FILE_COUNT Java/Kotlin files."
-            echo "skip_codeql=false" >> $GITHUB_ENV
-          fi
+    - name: 🔍 Check for Java/Kotlin Source Files
+      id: check_files
+      run: |
+        FILE_COUNT=$(find . -name "*.java" -o -name "*.kt" | wc -l)
+        if [[ "$FILE_COUNT" -eq 0 ]]; then
+          echo "⚠️ No Java/Kotlin files found. Skipping CodeQL analysis."
+          echo "skip_codeql=true" >> $GITHUB_ENV
+        else
+          echo "✅ Found $FILE_COUNT Java/Kotlin files."
+          echo "skip_codeql=false" >> $GITHUB_ENV
+        fi
 
-      - name: 🛡️ Initialize CodeQL
-        if: env.skip_codeql == 'false'
-        uses: github/codeql-action/init@v3
-        with:
-          languages: ${{ matrix.language }}
-          build-mode: ${{ matrix.build-mode }}
-          queries: +security-extended,security-and-quality  # Advanced security & quality checks
+    - name: 🛡️ Initialize CodeQL
+      if: env.skip_codeql == 'false'
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
+        queries: +security-extended,security-and-quality  # Most advanced security & quality checks
 
-      - name: 🔄 Set Up Java & Gradle
-        if: env.skip_codeql == 'false'
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '17'  # Using Java 17 for compatibility
+    - name: 🔄 Set Up Java & Gradle
+      if: env.skip_codeql == 'false'
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'  # Latest OpenJDK distribution
+        java-version: '17'  # Use Java 17 for best compatibility
 
-      - name: 🛠️ Build Java/Kotlin Project (Debug)
-        if: env.skip_codeql == 'false'
-        run: |
-          set -e  # Stop execution if any command fails
-          echo "🔍 Checking available build files..."
-          ls -la
-          if [ -f "gradlew" ]; then
-            echo "✅ Found Gradle build system."
-            chmod +x gradlew
-            ./gradlew clean build --no-daemon --stacktrace --info
-          elif [ -f "pom.xml" ]; then
-            echo "✅ Found Maven build system."
-            mvn clean compile
-          else
-            echo "❌ No recognized build system (Gradle/Maven). CodeQL might fail!"
-            exit 1
-          fi
+    - name: 🛠️ Build Java/Kotlin Project (Advanced)
+      if: env.skip_codeql == 'false'
+      run: |
+        set -e  # Stop execution if any command fails
+        if [ -f "gradlew" ]; then
+          chmod +x gradlew
+          ./gradlew clean build --no-daemon --stacktrace --info
+        elif [ -f "pom.xml" ]; then
+          mvn clean compile
+        else
+          echo "⚠️ No recognized build system (Gradle/Maven). Skipping build."
+        fi
 
-      - name: 🔍 Perform CodeQL Analysis
-        if: env.skip_codeql == 'false'
-        uses: github/codeql-action/analyze@v3
-        with:
-          category: "/language:${{matrix.language}}"
-        continue-on-error: false  # Ensures failure is reported properly
+    - name: 🔍 Perform CodeQL Analysis
+      if: env.skip_codeql == 'false'
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"
+      continue-on-error: false  # Ensures failure is reported properly
 
-      - name: 🚨 Debug SARIF File
-        if: always()
-        run: |
-          echo "🔍 Checking if SARIF file exists..."
-          find . -name "*.sarif" || echo "⚠️ No SARIF files found!"
+    - name: 🚨 Debug SARIF File
+      if: always()
+      run: |
+        echo "🔍 Checking if SARIF file exists..."
+        find . -name "*.sarif" || echo "⚠️ No SARIF files found!"
 
-      - name: 📤 Upload CodeQL SARIF Results
-        if: env.skip_codeql == 'false'
-        run: |
-          echo "🔍 Searching for SARIF results..."
-          SARIF_FILE=$(find . -type f -name "*.sarif" | head -n 1)
+    - name: 📤 Upload CodeQL SARIF Results
+      if: env.skip_codeql == 'false'
+      run: |
+        echo "🔍 Searching for SARIF results..."
+        SARIF_FILE=$(find . -type f -name "*.sarif" | head -n 1)
 
-          if [[ -z "$SARIF_FILE" ]]; then
-            echo "❌ No SARIF file found! CodeQL analysis might have failed."
-            exit 1  # Fail the pipeline if no SARIF file is found
-          fi
+        if [[ -z "$SARIF_FILE" ]]; then
+          echo "❌ No SARIF file found! CodeQL analysis might have failed."
+          exit 1  # Fail the pipeline if no SARIF file is found
+        fi
 
-          echo "✅ Found SARIF file: $SARIF_FILE"
+        echo "✅ Found SARIF file: $SARIF_FILE"
 
-          echo "🚀 Uploading SARIF results to GitHub..."
-          UPLOAD_RESPONSE=$(curl -s -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-               -H "Accept: application/vnd.github.v3+json" \
-               -H "Content-Type: application/json" \
-               "https://api.github.com/repos/${{ github.repository }}/code-scanning/sarifs" \
-               -d @<(jq -n --arg sarif "$(cat $SARIF_FILE | base64 -w 0)" \
-                   '{commit_sha: "${{ github.sha }}", ref: "${{ github.ref }}", sarif: $sarif}'))
+        echo "🚀 Uploading SARIF results to GitHub..."
+        UPLOAD_RESPONSE=$(curl -s -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+             -H "Accept: application/vnd.github.v3+json" \
+             -H "Content-Type: application/json" \
+             "https://api.github.com/repos/${{ github.repository }}/code-scanning/sarifs" \
+             -d @<(jq -n --arg sarif "$(cat $SARIF_FILE | base64 -w 0)" \
+                 '{commit_sha: "${{ github.sha }}", ref: "${{ github.ref }}", sarif: $sarif}'))
 
-          UPLOAD_STATUS=$(echo "$UPLOAD_RESPONSE" | jq -r '.id // empty')
+        UPLOAD_STATUS=$(echo "$UPLOAD_RESPONSE" | jq -r '.id // empty')
 
-          if [[ -z "$UPLOAD_STATUS" ]]; then
-            echo "❌ SARIF upload failed! API Response:"
-            echo "$UPLOAD_RESPONSE" | jq .
-            exit 1
-          fi
-
-          echo "✅ SARIF uploaded successfully with ID: $UPLOAD_STATUS"
-
-      - name: 🚨 Block Merge if CodeQL Detects Issues
-        if: failure()
-        run: |
-          echo "❌ CodeQL detected security issues. Merge is blocked!"
+        if [[ -z "$UPLOAD_STATUS" ]]; then
+          echo "❌ SARIF upload failed! API Response:"
+          echo "$UPLOAD_RESPONSE" | jq .
           exit 1
+        fi
+
+        echo "✅ SARIF uploaded successfully with ID: $UPLOAD_STATUS"
+
+    - name: 🚨 Block Merge if CodeQL Detects Issues
+      if: failure()
+      run: |
+        echo "❌ CodeQL detected security issues. Merge is blocked!"
+        exit 1
