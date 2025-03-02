@@ -198,8 +198,6 @@ jobs:
             https://api.github.com/repos/${{ github.repository }}/actions/workflows/codeql.yml/dispatches \
             -d '{"ref":"${{ github.ref }}"}')
   
-          echo "🔹 API Response: $RESPONSE"
-  
           if [[ $? -ne 0 ]]; then
             echo "❌ Failed to trigger CodeQL workflow."
             exit 1
@@ -210,59 +208,54 @@ jobs:
         run: |
           MAX_RETRIES=60  # 60 * 30s = 30 minutes
           COUNT=0
+          RUN_ID=""
   
-          echo "🔍 Looking for CodeQL workflow run..."
-          while [[ "$COUNT" -lt "$MAX_RETRIES" ]]; do
-            API_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
+          echo "🔍 Waiting for CodeQL workflow to start..."
+          while [[ -z "$RUN_ID" && "$COUNT" -lt "$MAX_RETRIES" ]]; do
+            RUN_ID=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
               -H "Accept: application/vnd.github.v3+json" \
-              https://api.github.com/repos/${{ github.repository }}/actions/runs)
-  
-            echo "🔹 Raw API Response from workflow runs: $API_RESPONSE"
-  
-            RUN_ID=$(echo "$API_RESPONSE" | jq -r '.workflow_runs[] | select(.name=="CodeQL Ultimate Security Scan") | .id' | head -n 1)
+              https://api.github.com/repos/${{ github.repository }}/actions/runs \
+              | jq -r '.workflow_runs[] | select(.name=="CodeQL Ultimate Security Scan") | .id' | head -n 1)
   
             if [[ -z "$RUN_ID" || "$RUN_ID" == "null" ]]; then
-              echo "⚠️ CodeQL workflow run not found yet. Retrying in 30s..."
-            else
-              echo "✅ Found CodeQL workflow run: ID=$RUN_ID"
+              echo "⚠️ CodeQL run not found yet. Retrying... ($COUNT/$MAX_RETRIES)"
+              COUNT=$((COUNT+1))
+              sleep 30
+            fi
+          done
   
-              while [[ "$COUNT" -lt "$MAX_RETRIES" ]]; do
-                STATUS=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
-                  -H "Accept: application/vnd.github.v3+json" \
-                  https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID \
-                  | jq -r '.status')
+          if [[ -z "$RUN_ID" ]]; then
+            echo "❌ CodeQL workflow did not start within 30 minutes."
+            exit 1
+          fi
   
-                echo "🔹 CodeQL workflow current status: $STATUS"
+          echo "✅ Found CodeQL run: ID=$RUN_ID"
   
-                if [[ "$STATUS" == "completed" ]]; then
-                  CONCLUSION=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
-                    -H "Accept: application/vnd.github.v3+json" \
-                    https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID \
-                    | jq -r '.conclusion')
+          while [[ "$COUNT" -lt "$MAX_RETRIES" ]]; do
+            STATUS=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID \
+              | jq -r '.status')
   
-                  echo "🔹 CodeQL workflow conclusion: $CONCLUSION"
+            if [[ "$STATUS" == "completed" ]]; then
+              CONCLUSION=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
+                -H "Accept: application/vnd.github.v3+json" \
+                https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID \
+                | jq -r '.conclusion')
   
-                  if [[ "$CONCLUSION" == "success" ]]; then
-                    echo "✅ CodeQL scan passed. Continuing pipeline..."
-                    exit 0
-                  else
-                    echo "❌ CodeQL scan failed! Blocking merge!"
-                    exit 1
-                  fi
-                fi
-  
-                echo "⏳ CodeQL is still running... ($COUNT/$MAX_RETRIES retries)"
-                COUNT=$((COUNT+1))
-                sleep 30
-              done
-  
-              echo "❌ Timeout! CodeQL scan did not finish within 30 minutes."
-              exit 1
+              if [[ "$CONCLUSION" == "success" ]]; then
+                echo "✅ CodeQL scan passed. Continuing pipeline..."
+                exit 0
+              else
+                echo "❌ CodeQL scan failed! Blocking merge."
+                exit 1
+              fi
             fi
   
+            echo "⏳ CodeQL is still running... ($COUNT/$MAX_RETRIES retries)"
             COUNT=$((COUNT+1))
             sleep 30
           done
   
-          echo "❌ Timeout! CodeQL scan did not start within 30 minutes."
+          echo "❌ Timeout! CodeQL scan did not finish within 30 minutes."
           exit 1
