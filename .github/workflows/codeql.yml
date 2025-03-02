@@ -12,13 +12,7 @@
 name: "CodeQL Ultimate Security Scan"
 
 on:
-  workflow_call:  # Allows other workflows to trigger this one
-  push:
-    branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
-  schedule:
-    - cron: '20 16 * * 3'  # Runs every Wednesday at 16:20 UTC
+  workflow_call:  # This workflow can only be triggered by another workflow
 
 jobs:
   analyze:
@@ -89,21 +83,6 @@ jobs:
       with:
         category: "/language:${{matrix.language}}"
       continue-on-error: false  # Ensures failure is reported properly
-
-    - name: 📤 Upload CodeQL SARIF Results using curl
-      if: env.skip_codeql == 'false'
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        OWNER=$(echo "${{ github.repository }}" | cut -d'/' -f1)
-        REPO=$(echo "${{ github.repository }}" | cut -d'/' -f2)
-        COMMIT_SHA="${{ github.sha }}"
-
-        echo "🔍 Uploading SARIF results to GitHub..."
-        curl -X POST -H "Authorization: token $GH_TOKEN" \
-          -H "Accept: application/vnd.github.v3+json" \
-          https://api.github.com/repos/$OWNER/$REPO/code-scanning/sarifs \
-          -d @results.sarif
 
     - name: 🚨 Block Merge if CodeQL Detects Issues
       if: failure()
