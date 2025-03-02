@@ -64,17 +64,22 @@ jobs:
         distribution: 'temurin'  # Latest OpenJDK distribution
         java-version: '17'  # Use Java 17 for best compatibility
 
-    - name: 🛠️ Build Java/Kotlin Project (Advanced)
+    - name: 🛠️ Build Java/Kotlin Project (Debug)
       if: env.skip_codeql == 'false'
       run: |
         set -e  # Stop execution if any command fails
+        echo "🔍 Checking available build files..."
+        ls -la
         if [ -f "gradlew" ]; then
+          echo "✅ Found Gradle build system."
           chmod +x gradlew
           ./gradlew clean build --no-daemon --stacktrace --info
         elif [ -f "pom.xml" ]; then
+          echo "✅ Found Maven build system."
           mvn clean compile
         else
-          echo "⚠️ No recognized build system (Gradle/Maven). Skipping build."
+          echo "❌ No recognized build system (Gradle/Maven). CodeQL might fail!"
+          exit 1
         fi
 
     - name: 🔍 Perform CodeQL Analysis
@@ -83,6 +88,29 @@ jobs:
       with:
         category: "/language:${{matrix.language}}"
       continue-on-error: false  # Ensures failure is reported properly
+
+    - name: 🚨 Debug SARIF File
+      if: always()
+      run: |
+        echo "🔍 Checking if SARIF file exists..."
+        find . -name "*.sarif" || echo "⚠️ No SARIF files found!"
+
+    - name: 📤 Upload CodeQL SARIF Results
+      if: env.skip_codeql == 'false'
+      run: |
+        echo "🔍 Checking for SARIF results..."
+        SARIF_PATH=$(find . -name "*.sarif" | head -n 1)
+
+        if [[ -z "$SARIF_PATH" ]]; then
+          echo "❌ SARIF file not found! CodeQL analysis may have failed."
+          exit 1
+        fi
+
+        echo "✅ Found SARIF file at: $SARIF_PATH. Uploading to GitHub..."
+        curl -X POST -H "Authorization: token $GH_TOKEN" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/code-scanning/sarifs \
+          -d @$SARIF_PATH
 
     - name: 🚨 Block Merge if CodeQL Detects Issues
       if: failure()
