@@ -188,42 +188,42 @@ jobs:
     steps:
       - name: 🛎️ Checkout Repository
         uses: actions/checkout@v4
-  
+
       - name: 🚀 Trigger CodeQL Workflow
         id: trigger_codeql
         run: |
-          echo "🔹 Triggering CodeQL workflow..."
+          echo "🔹 Triggering CodeQL workflow on 'master' branch..."
           RESPONSE=$(curl -s -X POST -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/${{ github.repository }}/actions/workflows/codeql.yml/dispatches \
-            -d '{"ref":"${{ github.ref }}"}')
-  
+            -d '{"ref":"refs/heads/master"}')
+
+          echo "📜 Response from GitHub API:"
+          echo "$RESPONSE"
+
           if [[ $? -ne 0 ]]; then
             echo "❌ Failed to trigger CodeQL workflow!"
-            echo "📜 API Response: $RESPONSE"
             exit 1
           fi
           echo "✅ CodeQL workflow triggered successfully!"
-  
+
       - name: ⏳ Wait for CodeQL to Start (Max 30 min)
         run: |
           MAX_RETRIES=30
           COUNT=0
           RUN_ID=""
-  
+
           echo "🔍 Waiting for CodeQL workflow to start..."
           while [[ -z "$RUN_ID" && "$COUNT" -lt "$MAX_RETRIES" ]]; do
             RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
               -H "Accept: application/vnd.github.v3+json" \
               https://api.github.com/repos/${{ github.repository }}/actions/runs)
-  
-            # Debugging: Print available workflows
+
             echo "📜 Available Workflows:"
             echo "$RESPONSE" | jq -r '.workflow_runs[].name' || echo "⚠️ No workflows found!"
-  
-            # Get correct workflow name (double-check this manually)
-            RUN_ID=$(echo "$RESPONSE" | jq -r '.workflow_runs[] | select(.name=="CodeQL Ultimate Security Scan") | .id' | head -n 1)
-  
+
+            RUN_ID=$(echo "$RESPONSE" | jq -r '.workflow_runs[] | select(.name=="CodeQL Ultimate Security Scan" and .head_branch=="master") | .id' | head -n 1)
+
             if [[ -z "$RUN_ID" || "$RUN_ID" == "null" ]]; then
               echo "⚠️ CodeQL run not found yet. Retrying... ($COUNT/$MAX_RETRIES)"
               COUNT=$((COUNT+1))
@@ -232,12 +232,12 @@ jobs:
               echo "✅ Found CodeQL workflow run: ID=$RUN_ID"
             fi
           done
-  
+
           if [[ -z "$RUN_ID" || "$RUN_ID" == "null" ]]; then
             echo "❌ CodeQL workflow did not start within 30 minutes."
             exit 1
           fi
-  
+
       - name: ⏳ Wait for CodeQL to Complete
         run: |
           COUNT=0
@@ -246,48 +246,30 @@ jobs:
               -H "Accept: application/vnd.github.v3+json" \
               https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID \
               | jq -r '.status')
-  
+
             echo "🔄 Current CodeQL Status: $STATUS"
-  
+
             if [[ "$STATUS" == "completed" ]]; then
               CONCLUSION=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
                 -H "Accept: application/vnd.github.v3+json" \
                 https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID \
                 | jq -r '.conclusion')
-  
+
               echo "🔍 CodeQL Scan Conclusion: $CONCLUSION"
-  
+
               if [[ "$CONCLUSION" == "success" ]]; then
                 echo "✅ CodeQL scan passed. Continuing pipeline..."
                 exit 0
               else
                 echo "❌ CodeQL scan failed! Blocking merge."
-                echo "🚨 Fetching Failure Details..."
-  
-                FAILURE_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
-                  -H "Accept: application/vnd.github.v3+json" \
-                  https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID/jobs)
-  
-                if jq -e . >/dev/null 2>&1 <<<"$FAILURE_RESPONSE"; then
-                  FAILURE_REASON=$(echo "$FAILURE_RESPONSE" | jq -r '
-                    if .jobs then
-                      [.jobs[] | select(.status=="completed" and .conclusion=="failure") | {name: .name, failure_message: (.steps[].name // "Unknown failure")}]
-                    else
-                      "No failure details found"
-                    end' || echo "Unknown error")
-                else
-                  FAILURE_REASON="Invalid JSON received from GitHub API"
-                fi
-  
-                echo "🚨 Failure Details: $FAILURE_REASON"
                 exit 1
               fi
             fi
-  
+
             echo "⏳ CodeQL is still running... ($COUNT/$MAX_RETRIES retries)"
             COUNT=$((COUNT+1))
-            sleep 30
+            sleep 60
           done
-  
+
           echo "❌ Timeout! CodeQL scan did not finish within 30 minutes."
           exit 1
