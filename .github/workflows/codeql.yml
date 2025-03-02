@@ -104,17 +104,18 @@ jobs:
           category: "/language:${{matrix.language}}"
         continue-on-error: false
 
-      - name: 🚨 Debug SARIF File
+      - name: 🚨 Debug SARIF File Before Upload
         if: always()
         run: |
           echo "🔍 Checking if SARIF file exists..."
-          find . -name "*.sarif" || echo "⚠️ No SARIF files found!"
+          find ${{ github.workspace }} -name "*.sarif" -print || echo "⚠️ No SARIF files found!"
 
       - name: 📤 Upload CodeQL SARIF Results
         if: env.skip_codeql == 'false'
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: "**/*.sarif"
+          sarif_file: ${{ github.workspace }}/results/java-kotlin.sarif
+        continue-on-error: false
 
       - name: 📦 Store Built APK
         if: env.skip_codeql == 'false'
