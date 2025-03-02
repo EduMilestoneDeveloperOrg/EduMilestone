@@ -13,6 +13,7 @@ name: "CodeQL Ultimate Security Scan"
 
 on:
   workflow_call:
+  workflow_dispatch:  # 🚀 Enables manual trigger via API
 
 jobs:
   analyze:
