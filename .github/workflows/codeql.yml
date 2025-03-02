@@ -12,7 +12,7 @@
 name: "CodeQL Ultimate Security Scan"
 
 on:
-  workflow_call:
+  workflow_call:  # Only triggered by another workflow
   workflow_dispatch:  # 🚀 Enables manual trigger via API
 
 jobs:
@@ -20,10 +20,10 @@ jobs:
     name: Security Analysis (${{ matrix.language }})
     runs-on: ubuntu-latest
     permissions:
-      security-events: write
+      security-events: write  # Required for SARIF upload
       packages: read
-      contents: read
-      actions: read
+      contents: write
+      actions: write
 
     strategy:
       fail-fast: false
@@ -36,7 +36,7 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Ensures full history for accurate analysis
 
       - name: 🔍 Check for Java/Kotlin Source Files
         id: check_files
@@ -56,7 +56,7 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
-          queries: +security-extended,security-and-quality
+          queries: +security-extended,security-and-quality  # Most advanced security & quality checks
 
       - name: 🔄 Set Up Java & Gradle
         if: env.skip_codeql == 'false'
@@ -83,12 +83,33 @@ jobs:
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:${{matrix.language}}"
+        continue-on-error: false
+
+      - name: 🚨 Debug SARIF File
+        if: always()
+        run: |
+          echo "🔍 Checking if SARIF file exists..."
+          find . -name "*.sarif" || echo "⚠️ No SARIF files found!"
 
       - name: 📤 Upload CodeQL SARIF Results
         if: env.skip_codeql == 'false'
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: results.sarif
+        run: |
+          echo "🔍 Searching for SARIF results..."
+          SARIF_FILE=$(find . -type f -name "*.sarif" | head -n 1)
+
+          if [[ -z "$SARIF_FILE" ]]; then
+            echo "❌ No SARIF file found! CodeQL analysis might have failed."
+            exit 1
+          fi
+
+          echo "✅ Found SARIF file: $SARIF_FILE"
+
+          echo "🚀 Uploading SARIF results to GitHub..."
+          curl -s -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+               -H "Accept: application/vnd.github.v3+json" \
+               -H "Content-Type: application/json" \
+               "https://api.github.com/repos/${{ github.repository }}/code-scanning/sarifs" \
+               -d @${SARIF_FILE}
 
       - name: 🚨 Block Merge if CodeQL Detects Issues
         if: failure()
