@@ -12,7 +12,7 @@
 name: "CodeQL Ultimate Security Scan"
 
 on:
-  workflow_call:  # This workflow can only be triggered by another workflow
+  workflow_call:
 
 jobs:
   analyze:
@@ -55,16 +55,16 @@ jobs:
       with:
         languages: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
-        queries: +security-extended,security-and-quality  # Most advanced security & quality checks
+        queries: +security-extended,security-and-quality
 
     - name: 🔄 Set Up Java & Gradle
       if: env.skip_codeql == 'false'
       uses: actions/setup-java@v3
       with:
-        distribution: 'temurin'  # Latest OpenJDK distribution
-        java-version: '17'  # Use Java 17 for best compatibility
+        distribution: 'temurin'
+        java-version: '17'
 
-    - name: 🛠️ Build Java/Kotlin Project (Debug)
+    - name: 🛠️ Build Java/Kotlin Project
       if: env.skip_codeql == 'false'
       run: |
         set -e  # Stop execution if any command fails
@@ -87,7 +87,7 @@ jobs:
       uses: github/codeql-action/analyze@v3
       with:
         category: "/language:${{matrix.language}}"
-      continue-on-error: false  # Ensures failure is reported properly
+      continue-on-error: false
 
     - name: 🚨 Debug SARIF File
       if: always()
@@ -98,7 +98,7 @@ jobs:
     - name: 📤 Upload CodeQL SARIF Results
       if: env.skip_codeql == 'false'
       run: |
-        echo "🔍 Checking for SARIF results..."
+        echo "🔍 Searching for SARIF file..."
         SARIF_PATH=$(find . -name "*.sarif" | head -n 1)
 
         if [[ -z "$SARIF_PATH" ]]; then
@@ -107,10 +107,11 @@ jobs:
         fi
 
         echo "✅ Found SARIF file at: $SARIF_PATH. Uploading to GitHub..."
-        curl -X POST -H "Authorization: token $GH_TOKEN" \
+        curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           -H "Accept: application/vnd.github.v3+json" \
-          https://api.github.com/repos/${{ github.repository }}/code-scanning/sarifs \
-          -d @$SARIF_PATH
+          -H "Content-Type: application/json" \
+          --data-binary @"$SARIF_PATH" \
+          "https://api.github.com/repos/${{ github.repository }}/code-scanning/sarifs"
 
     - name: 🚨 Block Merge if CodeQL Detects Issues
       if: failure()
