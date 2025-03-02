@@ -212,10 +212,11 @@ jobs:
 
           echo "🔍 Waiting for CodeQL workflow to start..."
           while [[ -z "$RUN_ID" && "$COUNT" -lt "$MAX_RETRIES" ]]; do
-            RUN_ID=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
+            RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
               -H "Accept: application/vnd.github.v3+json" \
-              https://api.github.com/repos/${{ github.repository }}/actions/runs \
-              | jq -r '.workflow_runs[] | select(.name=="CodeQL Ultimate Security Scan") | .id' | head -n 1)
+              https://api.github.com/repos/${{ github.repository }}/actions/runs)
+
+            RUN_ID=$(echo "$RESPONSE" | jq -r '.workflow_runs[] | select(.name=="CodeQL Ultimate Security Scan") | .id' | head -n 1)
 
             if [[ -z "$RUN_ID" || "$RUN_ID" == "null" ]]; then
               echo "⚠️ CodeQL run not found yet. Retrying... ($COUNT/$MAX_RETRIES)"
@@ -257,19 +258,17 @@ jobs:
                 # Fetch failure details safely
                 FAILURE_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
                   -H "Accept: application/vnd.github.v3+json" \
-                  https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID/jobs")
+                  https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID/jobs)
 
-                # Validate JSON before processing to prevent syntax errors
-                if jq -e . >/dev/null 2>&1 <<<"$FAILURE_RESPONSE"; then
-                  FAILURE_REASON=$(echo "$FAILURE_RESPONSE" | jq -r '
-                    if .jobs then
-                      [.jobs[] | select(.status=="completed" and .conclusion=="failure") | {name: .name, failure_message: (.steps[]?.name // "No failure details")}]
-                    else
-                      "No failure details found"
-                    end' || echo "Unknown error")
-                else
-                  FAILURE_REASON="Invalid JSON received from GitHub API"
-                fi
+                echo "📝 Raw Failure Response:"
+                echo "$FAILURE_RESPONSE" | jq .
+
+                FAILURE_REASON=$(echo "$FAILURE_RESPONSE" | jq -r '
+                  if .jobs then
+                    [.jobs[] | select(.status=="completed" and .conclusion=="failure") | {name: .name, failure_message: (.steps[].name // "Unknown failure")}]
+                  else
+                    "No failure details found"
+                  end' || echo "Unknown error")
 
                 echo "🚨 Failure Details: $FAILURE_REASON"
 
