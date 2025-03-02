@@ -22,8 +22,6 @@ jobs:
     permissions:
       security-events: write  # Required for SARIF upload
       packages: read
-      contents: write
-      actions: write
 
     strategy:
       fail-fast: false
@@ -56,7 +54,7 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
-          queries: +security-extended,security-and-quality  # Most advanced security & quality checks
+          queries: +security-extended,security-and-quality  # Advanced security & quality checks
 
       - name: 🔄 Set Up Java & Gradle
         if: env.skip_codeql == 'false'
@@ -65,18 +63,39 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: 🛠️ Build Java/Kotlin Project
+      - name: 📦 Setup Gradle Caching
         if: env.skip_codeql == 'false'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: 🛠️ Ensure Gradle Wrapper is Executable
+        if: env.skip_codeql == 'false'
+        run: chmod +x ./gradlew
+
+      - name: ⏳ Enforce Build Timeout
+        if: env.skip_codeql == 'false'
+        env:
+          TIMEOUT_DURATION: 15m
         run: |
-          set -e
-          if [ -f "gradlew" ]; then
-            chmod +x gradlew
-            ./gradlew clean build --no-daemon --stacktrace --info
-          elif [ -f "pom.xml" ]; then
-            mvn clean compile
-          else
-            echo "⚠️ No recognized build system (Gradle/Maven). Skipping build."
+          echo "⏳ Running build with timeout of $TIMEOUT_DURATION..."
+          timeout $TIMEOUT_DURATION ./gradlew clean build --no-daemon --stacktrace --info
+          EXIT_CODE=$?
+
+          if [[ $EXIT_CODE -eq 124 ]]; then
+            echo "❌ ERROR: Build timed out after $TIMEOUT_DURATION."
+            exit 1
+          elif [[ $EXIT_CODE -ne 0 ]]; then
+            echo "❌ ERROR: Build failed with exit code $EXIT_CODE."
+            exit $EXIT_CODE
           fi
+
+          echo "✅ Build completed successfully."
 
       - name: 🔍 Perform CodeQL Analysis
         if: env.skip_codeql == 'false'
@@ -93,23 +112,17 @@ jobs:
 
       - name: 📤 Upload CodeQL SARIF Results
         if: env.skip_codeql == 'false'
-        run: |
-          echo "🔍 Searching for SARIF results..."
-          SARIF_FILE=$(find . -type f -name "*.sarif" | head -n 1)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: "**/*.sarif"
 
-          if [[ -z "$SARIF_FILE" ]]; then
-            echo "❌ No SARIF file found! CodeQL analysis might have failed."
-            exit 1
-          fi
-
-          echo "✅ Found SARIF file: $SARIF_FILE"
-
-          echo "🚀 Uploading SARIF results to GitHub..."
-          curl -s -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-               -H "Accept: application/vnd.github.v3+json" \
-               -H "Content-Type: application/json" \
-               "https://api.github.com/repos/${{ github.repository }}/code-scanning/sarifs" \
-               -d @${SARIF_FILE}
+      - name: 📦 Store Built APK
+        if: env.skip_codeql == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: ignore  # ✅ Prevents workflow failure if APK isn't generated
 
       - name: 🚨 Block Merge if CodeQL Detects Issues
         if: failure()
