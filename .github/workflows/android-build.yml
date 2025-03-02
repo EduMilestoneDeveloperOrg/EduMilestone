@@ -205,6 +205,7 @@ jobs:
             echo "❌ Failed to trigger CodeQL workflow!"
             exit 1
           fi
+  
           echo "✅ CodeQL workflow triggered successfully!"
   
       - name: ⏳ Wait for CodeQL to Start
@@ -227,6 +228,7 @@ jobs:
               sleep 90
             else
               echo "✅ Found CodeQL workflow run: ID=$RUN_ID"
+              echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV  # ✅ Store RUN_ID for later use
             fi
           done
   
@@ -238,6 +240,9 @@ jobs:
       - name: ⏳ Wait for CodeQL to Complete
         run: |
           COUNT=0
+          MAX_RETRIES=20  # Keep the total 30-minute limit
+          echo "🔍 Checking CodeQL workflow status for RUN_ID=$RUN_ID..."
+  
           while [[ "$COUNT" -lt "$MAX_RETRIES" ]]; do
             STATUS=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
               -H "Accept: application/vnd.github.v3+json" \
