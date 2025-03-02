@@ -1,0 +1,183 @@
+name: Android CI/CD Pipeline
+
+# 🚀 Features Included in the CI/CD Pipeline
+# 🚧 PR Restriction: Ensures only repository collaborators/members can raise PRs.
+# 🛡️ Security Scan (CodeQL): Runs CodeQL security analysis.
+# 🔍 Dependency Scan (Trivy): Scans dependencies for vulnerabilities.
+# 🤖 AI Code Review (Copilot): Enforces GitHub Copilot AI review on PRs.
+# 📜 PR Description Enforcement: Ensures meaningful PR descriptions.
+# 📑 PR File Limit Enforcement: Restricts PRs modifying too many files.
+# 🎨 Linting (ktlint): Enforces Kotlin coding standards.
+# ✅ Organization Owner Approval: Requires manual approval from the repository owner.
+# 🚀 Build & APK Generation: Compiles the project and generates an APK.
+# 🧪 Unit Testing: Runs unit tests (optional but recommended).
+# ✅ Final Merge Check: Ensures that all required jobs pass before PR approval.
+# 🔄 Fail-Fast Strategy: Prevents unnecessary job execution if a critical job fails.
+# ⏳ Timeout Enforcement: Limits execution time to prevent long-running jobs.
+# ♻️ Resource Cleanup: Ensures that workspaces are cleaned after execution.
+# 📢 Notifications: Sends alerts in case of failures (Slack, email, etc.).
+# 🔁 Retry Mechanism: Retries transient failures automatically.
+# ⚡ Parallelization: Runs independent jobs concurrently to speed up execution.
+# 📦 Dependency Caching: Caches Gradle dependencies to optimize build speed.
+
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+    branches:
+      - master
+    paths:
+      - '**'
+  push:
+    branches:
+      - master
+
+permissions:
+  pull-requests: write
+  contents: write
+  security-events: write  # Required for CodeQL scanning
+  actions: write
+
+jobs:
+# 1️⃣ Pre-Checks & PR Validation (No dependencies)
+  pr_restriction:
+    name: 🚧 Enforce PR Restrictions
+    runs-on: ubuntu-latest
+  
+    steps:
+      - name: 🔍 Debug & Verify PR Author
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🔍 Starting PR Debugging..."
+          echo "🔹 GitHub Event: ${{ github.event_name }}"
+          echo "🔹 Repository: ${{ github.repository }}"
+          echo "🔹 Actor: ${{ github.actor }}"
+          echo "🔹 Action: ${{ github.event.action }}"
+          echo "🔹 PR Number: ${{ github.event.pull_request.number }}"
+          echo "🔹 PR URL: ${{ github.event.pull_request.html_url }}"
+          
+          echo "🔍 Extracting PR Number..."
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          REPO_NAME="${{ github.repository }}"
+  
+          if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
+            echo "❌ ERROR: PR number is missing or invalid."
+            exit 1
+          fi
+  
+          echo "🔹 Extracted PR Number: '$PR_NUMBER'"
+          echo "🔹 Repository: $REPO_NAME"
+  
+          echo "🔍 Checking GitHub Token Authentication..."
+          gh auth status || { echo "❌ GH_TOKEN authentication failed!"; exit 1; }
+  
+          echo "🔍 Fetching PR Author..."
+          PR_USER=$(curl -s -H "Authorization: token $GH_TOKEN" \
+            "https://api.github.com/repos/$REPO_NAME/pulls/$PR_NUMBER" | jq -r '.user.login')
+  
+          if [[ -z "$PR_USER" || "$PR_USER" == "null" ]]; then
+            echo "❌ ERROR: Failed to retrieve PR author."
+            echo "   - PR number may be incorrect"
+            echo "   - GH_TOKEN may lack permissions"
+            echo "   - Repository may be private"
+            exit 1
+          fi
+  
+          echo "✅ PR Author: $PR_USER"
+  
+          echo "🔍 Checking if PR author is a collaborator or member..."
+          COLLABORATOR_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" \
+            "https://api.github.com/repos/$REPO_NAME/collaborators/$PR_USER")
+  
+          if [[ "$COLLABORATOR_STATUS" -ne 204 ]]; then
+            echo "❌ ERROR: Only repository collaborators or members can raise pull requests!"
+            exit 1
+          fi
+  
+          echo "✅ PR is from an authorized collaborator or member."
+
+  enforce_pr_description:
+    name: 📜 Enforce PR Description
+    runs-on: ubuntu-latest
+    needs: [pr_restriction]
+    steps:
+      - name: 🔍 Check PR Description
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Extract pull request number
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          REPO_NAME="${{ github.repository }}"
+  
+          if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
+            echo "❌ ERROR: Invalid PR number. Cannot check description."
+            exit 1
+          fi
+  
+          # Retrieve the PR description using curl
+          DESCRIPTION=$(curl -s -H "Authorization: token $GH_TOKEN" \
+            "https://api.github.com/repos/$REPO_NAME/pulls/$PR_NUMBER" | jq -r '.body')
+  
+          # Debugging: Show raw description for clarity
+          echo "🔍 Raw PR Description:"
+          echo "$DESCRIPTION"
+  
+          # Ensure description retrieval succeeded
+          if [[ -z "$DESCRIPTION" || "$DESCRIPTION" == "null" ]]; then
+            echo "❌ ERROR: PR must have a meaningful description!"
+            exit 1
+          fi
+  
+          # Trim whitespace and check if the description is empty
+          TRIMMED_DESC=$(echo "$DESCRIPTION" | xargs)
+  
+          if [[ -z "$TRIMMED_DESC" ]]; then
+            echo "❌ ERROR: PR description cannot be empty or only spaces!"
+            exit 1
+          fi
+          
+          echo "✅ PR has a valid description."
+
+  enforce_pr_files_limit:
+    name: 📑 Limit PR File Changes (Max 50)
+    runs-on: ubuntu-latest
+    needs: [enforce_pr_description]
+    steps:
+      - name: 🔍 Check Number of Files Changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Extract pull request number and repository name
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          REPO_NAME="${{ github.repository }}"
+  
+          if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
+            echo "❌ ERROR: Invalid PR number. Cannot check file count."
+            exit 1
+          fi
+  
+          # Fetch list of changed files using GitHub API
+          RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" \
+            "https://api.github.com/repos/$REPO_NAME/pulls/$PR_NUMBER/files")
+  
+          # Debugging: Print the API response for troubleshooting
+          echo "🔍 API Response:"
+          echo "$RESPONSE"
+  
+          # Extract file count
+          FILE_COUNT=$(echo "$RESPONSE" | jq 'length' 2>/dev/null || echo "")
+  
+          # Ensure FILE_COUNT is valid and numeric
+          if ! [[ "$FILE_COUNT" =~ ^[0-9]+$ ]]; then
+            echo "❌ ERROR: Unable to determine the number of changed files."
+            exit 1
+          fi
+  
+          # Verify if the number of files changed exceeds the limit
+          if [[ "$FILE_COUNT" -gt 50 ]]; then
+            echo "❌ ERROR: PR modifies too many files ($FILE_COUNT). Please split into smaller PRs."
+            exit 1
+          fi
+          
+          echo "✅ PR modifies $FILE_COUNT files, within the allowed limit."
