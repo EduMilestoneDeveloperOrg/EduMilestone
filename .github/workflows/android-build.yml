@@ -181,3 +181,13 @@ jobs:
           fi
           
           echo "✅ PR modifies $FILE_COUNT files, within the allowed limit."
+  security_scan:
+    name: 🛡️ Trigger CodeQL Workflow
+    runs-on: ubuntu-latest
+    needs: [enforce_pr_files_limit]
+    steps:
+      - name: 🔄 Trigger CodeQL Workflow
+        run: |
+          gh workflow run codeql.yml -r ${{ github.repository }} -f branch=${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
