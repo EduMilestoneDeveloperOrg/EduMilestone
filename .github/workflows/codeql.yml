@@ -12,11 +12,13 @@
 name: "CodeQL Ultimate Security Scan"
 
 on:
-  workflow_call:
+  workflow_call:  # Allows other workflows to trigger this one
   push:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
+  schedule:
+    - cron: '20 16 * * 3'  # Runs every Wednesday at 16:20 UTC
 
 jobs:
   analyze:
