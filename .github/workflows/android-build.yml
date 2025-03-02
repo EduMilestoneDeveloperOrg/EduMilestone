@@ -186,11 +186,22 @@ jobs:
     runs-on: ubuntu-latest
     needs: [enforce_pr_files_limit]
     steps:
+      - name: 🛎️ Checkout Repository
+        uses: actions/checkout@v4
+
       - name: 🚀 Trigger CodeQL Workflow
+        id: trigger_codeql
         run: |
-          gh workflow run codeql.yml -r ${{ github.repository }} -f branch=${{ github.ref_name }}
-        env:
-          GH_TOKEN: ${{ secrets.PAT_GITHUB_ACTIONS }}
+          RESPONSE=$(curl -s -X POST -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/actions/workflows/codeql.yml/dispatches \
+            -d '{"ref":"${{ github.ref }}"}')
+
+          if [[ $? -ne 0 ]]; then
+            echo "❌ Failed to trigger CodeQL workflow."
+            exit 1
+          fi
+          echo "✅ CodeQL workflow triggered successfully."
 
       - name: ⏳ Wait for CodeQL to Complete (Max 30 min)
         run: |
@@ -198,21 +209,32 @@ jobs:
           COUNT=0
 
           while [[ "$COUNT" -lt "$MAX_RETRIES" ]]; do
-            status=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
+            RUN_ID=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
               -H "Accept: application/vnd.github.v3+json" \
-              https://api.github.com/repos/${{ github.repository }}/actions/runs | jq -r '.workflow_runs[] | select(.name=="CodeQL Ultimate Security Scan") | .status')
+              https://api.github.com/repos/${{ github.repository }}/actions/runs \
+              | jq -r '.workflow_runs[] | select(.name=="CodeQL Ultimate Security Scan") | .id' | head -n 1)
 
-            if [[ "$status" == "completed" ]]; then
-              conclusion=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
+            if [[ -z "$RUN_ID" ]]; then
+              echo "⚠️ CodeQL workflow run not found yet. Retrying..."
+            else
+              STATUS=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
                 -H "Accept: application/vnd.github.v3+json" \
-                https://api.github.com/repos/${{ github.repository }}/actions/runs | jq -r '.workflow_runs[] | select(.name=="CodeQL Ultimate Security Scan") | .conclusion')
+                https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID \
+                | jq -r '.status')
 
-              if [[ "$conclusion" == "success" ]]; then
-                echo "✅ CodeQL scan passed. Continuing pipeline..."
-                exit 0
-              else
-                echo "❌ CodeQL scan failed! Blocking merge!"
-                exit 1
+              if [[ "$STATUS" == "completed" ]]; then
+                CONCLUSION=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
+                  -H "Accept: application/vnd.github.v3+json" \
+                  https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID \
+                  | jq -r '.conclusion')
+
+                if [[ "$CONCLUSION" == "success" ]]; then
+                  echo "✅ CodeQL scan passed. Continuing pipeline..."
+                  exit 0
+                else
+                  echo "❌ CodeQL scan failed! Blocking merge!"
+                  exit 1
+                fi
               fi
             fi
 
