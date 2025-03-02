@@ -193,13 +193,12 @@ jobs:
         id: trigger_codeql
         run: |
           echo "🔹 Triggering CodeQL workflow..."
-  
           RESPONSE=$(curl -s -X POST -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/${{ github.repository }}/actions/workflows/codeql.yml/dispatches \
             -d '{"ref":"${{ github.ref }}"}')
   
-          echo "🔹 API Response from trigger attempt: $RESPONSE"
+          echo "🔹 API Response: $RESPONSE"
   
           if [[ $? -ne 0 ]]; then
             echo "❌ Failed to trigger CodeQL workflow."
@@ -212,7 +211,7 @@ jobs:
           MAX_RETRIES=60  # 60 * 30s = 30 minutes
           COUNT=0
   
-          echo "🔍 Looking for the latest CodeQL workflow run..."
+          echo "🔍 Looking for CodeQL workflow run..."
           while [[ "$COUNT" -lt "$MAX_RETRIES" ]]; do
             API_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
               -H "Accept: application/vnd.github.v3+json" \
@@ -228,27 +227,26 @@ jobs:
               echo "✅ Found CodeQL workflow run: ID=$RUN_ID"
   
               while [[ "$COUNT" -lt "$MAX_RETRIES" ]]; do
-                RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
+                STATUS=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
                   -H "Accept: application/vnd.github.v3+json" \
-                  https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID)
+                  https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID \
+                  | jq -r '.status')
   
-                echo "🔹 API Response for run ID $RUN_ID: $RESPONSE"
-  
-                STATUS=$(echo "$RESPONSE" | jq -r '.status')
-                CONCLUSION=$(echo "$RESPONSE" | jq -r '.conclusion')
-  
-                echo "🔹 Current Status: $STATUS"
-                echo "🔹 Current Conclusion: $CONCLUSION"
+                echo "🔹 CodeQL workflow current status: $STATUS"
   
                 if [[ "$STATUS" == "completed" ]]; then
-                  echo "📜 CodeQL Scan Result: $CONCLUSION"
+                  CONCLUSION=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
+                    -H "Accept: application/vnd.github.v3+json" \
+                    https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID \
+                    | jq -r '.conclusion')
+  
+                  echo "🔹 CodeQL workflow conclusion: $CONCLUSION"
   
                   if [[ "$CONCLUSION" == "success" ]]; then
                     echo "✅ CodeQL scan passed. Continuing pipeline..."
                     exit 0
                   else
                     echo "❌ CodeQL scan failed! Blocking merge!"
-                    echo "🔍 Full API Response: $RESPONSE"
                     exit 1
                   fi
                 fi
