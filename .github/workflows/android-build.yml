@@ -182,37 +182,44 @@ jobs:
           
           echo "✅ PR modifies $FILE_COUNT files, within the allowed limit."
   security_scan:
-    name: 🛡️ Trigger CodeQL Workflow
+    name: 🛡️ Trigger & Wait for CodeQL
     runs-on: ubuntu-latest
-    needs: [enforce_pr_files_limit]  # CodeQL runs after PR validation steps
-    permissions:
-      security-events: write
-
+    needs: [enforce_pr_files_limit]
     steps:
-      - name: 🔄 Trigger CodeQL Workflow and Wait for Completion
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const response = await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: "codeql.yml",
-              ref: context.ref
-            });
-
-            console.log("✅ Triggered CodeQL workflow:", response.status);
-
-      - name: ⏳ Wait for CodeQL to Finish
-        uses: fountainhead/action-wait-for-check@v1.1.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          checkName: "CodeQL Ultimate Security Scan"
-          ref: ${{ github.ref }}
-          timeoutSeconds: 1800  # Wait up to 30 minutes
-
-      - name: 🚨 Fail if CodeQL Workflow Fails
-        if: failure()
+      - name: 🚀 Trigger CodeQL Workflow
         run: |
-          echo "❌ CodeQL scan failed. Merge is blocked!"
+          gh workflow run codeql.yml -r ${{ github.repository }} -f branch=${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.PAT_GITHUB_ACTIONS }}
+
+      - name: ⏳ Wait for CodeQL to Complete (Max 30 min)
+        run: |
+          MAX_RETRIES=60  # 60 * 30s = 30 minutes
+          COUNT=0
+
+          while [[ "$COUNT" -lt "$MAX_RETRIES" ]]; do
+            status=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              https://api.github.com/repos/${{ github.repository }}/actions/runs | jq -r '.workflow_runs[] | select(.name=="CodeQL Ultimate Security Scan") | .status')
+
+            if [[ "$status" == "completed" ]]; then
+              conclusion=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB_ACTIONS }}" \
+                -H "Accept: application/vnd.github.v3+json" \
+                https://api.github.com/repos/${{ github.repository }}/actions/runs | jq -r '.workflow_runs[] | select(.name=="CodeQL Ultimate Security Scan") | .conclusion')
+
+              if [[ "$conclusion" == "success" ]]; then
+                echo "✅ CodeQL scan passed. Continuing pipeline..."
+                exit 0
+              else
+                echo "❌ CodeQL scan failed! Blocking merge!"
+                exit 1
+              fi
+            fi
+
+            echo "⏳ Waiting for CodeQL to complete ($COUNT/$MAX_RETRIES)..."
+            COUNT=$((COUNT+1))
+            sleep 30
+          done
+
+          echo "❌ Timeout! CodeQL scan did not finish within 30 minutes."
           exit 1
