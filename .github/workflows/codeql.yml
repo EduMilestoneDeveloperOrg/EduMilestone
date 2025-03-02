@@ -1,0 +1,110 @@
+# For most projects, this workflow file will not need changing; you simply need
+# to commit it to your repository.
+#
+# You may wish to alter this file to override the set of languages analyzed,
+# or to provide custom queries or build logic.
+#
+# ******** NOTE ********
+# We have attempted to detect the languages in your repository. Please check
+# the `language` matrix defined below to confirm you have the correct set of
+# supported CodeQL languages.
+#
+name: "CodeQL Ultimate Security Scan"
+
+on:
+  workflow_call:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  analyze:
+    name: Security Analysis (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: java-kotlin
+            build-mode: manual
+
+    steps:
+    - name: 📥 Checkout Repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Ensures full history for accurate analysis
+
+    - name: 🔍 Check for Java/Kotlin Source Files
+      id: check_files
+      run: |
+        FILE_COUNT=$(find . -name "*.java" -o -name "*.kt" | wc -l)
+        if [[ "$FILE_COUNT" -eq 0 ]]; then
+          echo "⚠️ No Java/Kotlin files found. Skipping CodeQL analysis."
+          echo "skip_codeql=true" >> $GITHUB_ENV
+        else
+          echo "✅ Found $FILE_COUNT Java/Kotlin files."
+          echo "skip_codeql=false" >> $GITHUB_ENV
+        fi
+
+    - name: 🛡️ Initialize CodeQL
+      if: env.skip_codeql == 'false'
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
+        queries: +security-extended,security-and-quality  # Most advanced security & quality checks
+
+    - name: 🔄 Set Up Java & Gradle
+      if: env.skip_codeql == 'false'
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'  # Latest OpenJDK distribution
+        java-version: '17'  # Use Java 17 for best compatibility
+
+    - name: 🛠️ Build Java/Kotlin Project (Advanced)
+      if: env.skip_codeql == 'false'
+      run: |
+        set -e  # Stop execution if any command fails
+        if [ -f "gradlew" ]; then
+          chmod +x gradlew
+          ./gradlew clean build --no-daemon --stacktrace --info
+        elif [ -f "pom.xml" ]; then
+          mvn clean compile
+        else
+          echo "⚠️ No recognized build system (Gradle/Maven). Skipping build."
+        fi
+
+    - name: 🔍 Perform CodeQL Analysis
+      if: env.skip_codeql == 'false'
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"
+      continue-on-error: false  # Ensures failure is reported properly
+
+    - name: 📤 Upload CodeQL SARIF Results using curl
+      if: env.skip_codeql == 'false'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        OWNER=$(echo "${{ github.repository }}" | cut -d'/' -f1)
+        REPO=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+        COMMIT_SHA="${{ github.sha }}"
+
+        echo "🔍 Uploading SARIF results to GitHub..."
+        curl -X POST -H "Authorization: token $GH_TOKEN" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/$OWNER/$REPO/code-scanning/sarifs \
+          -d @results.sarif
+
+    - name: 🚨 Block Merge if CodeQL Detects Issues
+      if: failure()
+      run: |
+        echo "❌ CodeQL detected security issues. Merge is blocked!"
+        exit 1
