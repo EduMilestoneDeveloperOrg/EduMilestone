@@ -1,56 +1,55 @@
-name: "CodeQL Advanced - Deep Scan"  # Name of the workflow
+name: "CodeQL Advanced - Deep Scan"
 
 on:
-  workflow_call:  # This allows the workflow to be triggered by other workflows
+  workflow_call:  # This allows the workflow to be called from other workflows
     inputs:
-      language:  # The input parameter for specifying the language to analyze (e.g., java, python, etc.)
-        required: true  # This input is required when calling this workflow
-        type: string  # The input type is a string
-      build-mode:  # The input parameter for specifying the build mode (e.g., autobuild, manual)
-        required: true  # This input is required when calling this workflow
-        type: string  # The input type is a string
+      language:
+        required: true  # Language parameter is required
+        type: string
+      build-mode:
+        required: true  # Build mode parameter is required
+        type: string
 
 jobs:
   analyze:
-    name: Analyze (${{ inputs.language }})  # The name of the job, dynamically set based on the language input
-    runs-on: ${{ (inputs.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}  # Choose the appropriate runner based on the language input
+    name: Analyze (${{ inputs.language }})  # Job name dynamically set based on language input
+    runs-on: ${{ (inputs.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}  # Runner type based on the language
     permissions:
-      # Permissions required for running this workflow
-      security-events: write  # Grants write permissions for security events, required for scanning
-      packages: read  # Grants read access to internal or private CodeQL packs
-      actions: read  # Grants read access to actions used in this workflow
-      contents: read  # Grants read access to repository contents (needed for analyzing the code)
+      security-events: write  # Permission to write security events
+      actions: read  # Permission to read actions
+      contents: read  # Permission to read contents
+      packages: none  # Set packages to none as we're calling the workflow from another workflow
 
     strategy:
-      fail-fast: false  # Do not stop the workflow immediately if one of the jobs fails, continue running
+      fail-fast: false
       matrix:
         include:
-          - language: ${{ inputs.language }}  # The language input passed when calling the workflow
-            build-mode: ${{ inputs.build-mode }}  # The build mode input passed when calling the workflow
+          - language: ${{ inputs.language }}  # Include the language from the workflow call input
+            build-mode: ${{ inputs.build-mode }}  # Include the build mode from the workflow call input
 
     steps:
-    # Step 1: Checkout the repository so the code can be analyzed
+    # Step 1: Checkout the repository
     - name: Checkout repository
-      uses: actions/checkout@v4  # The `checkout` action checks out the repository content so the code can be analyzed
+      uses: actions/checkout@v4  # This checks out the repository to run the analysis
 
-    # Step 2: Initialize the CodeQL analysis tool with the given parameters
+    # Step 2: Initialize CodeQL with the provided language and build mode
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3  # The `init` action sets up the CodeQL tools for analysis
+      uses: github/codeql-action/init@v3
       with:
-        languages: ${{ inputs.language }}  # Pass the language input for analysis (e.g., java, python)
-        build-mode: ${{ inputs.build-mode }}  # Pass the build-mode input to define how the code should be built (e.g., autobuild or manual)
-        queries: +security-extended,security-and-quality  # Adds security and quality queries for a more thorough scan
-        ram: 8192  # Allocates more memory (8GB) to the process for larger scans to improve performance
+        languages: ${{ inputs.language }}  # Set the language for CodeQL analysis
+        build-mode: ${{ inputs.build-mode }}  # Set the build mode for CodeQL analysis
+        queries: +security-extended,security-and-quality  # Additional queries for deep security and quality checks
+        ram: 8192  # Allocating more memory for larger scans to improve performance
 
-    # Step 3: Conditionally handle the manual build mode (in case of custom build requirements)
-    - if: matrix.build-mode == 'manual'  # Only execute this step if the build mode is set to 'manual'
-      shell: bash  # Use the bash shell to run the commands
+    # Step 3: If the build mode is manual, prompt the user to run manual build commands
+    - if: matrix.build-mode == 'manual'
+      shell: bash
       run: |
-        echo 'Please run manual build commands'  # Notify the user that manual build commands should be run
-        exit 1  # Exit with an error code because the build needs to be manually handled
+        echo 'Please run manual build commands'
+        exit 1  # Fail the job if manual build commands aren't provided
 
-    # Step 4: Perform the actual CodeQL analysis on the codebase
+    # Step 4: Perform the actual CodeQL analysis using the initialized setup
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3  # The `analyze` action runs the CodeQL analysis on the checked-out repository
+      uses: github/codeql-action/analyze@v3
       with:
-        category: "/language:${{ inputs.language }}"  # Specifies the language category for the analysis based on the input language (e.g., java, python)
+        category: "/language:${{ inputs.language }}"  # Specify the language category for CodeQL analysis
