@@ -37,6 +37,9 @@ jobs:
         java-version: '17'
         cache: 'gradle'
 
+    - name: Validate Gradle Wrapper
+      uses: gradle/wrapper-validation-action@v1
+
     - name: Cache Gradle Dependencies
       uses: actions/cache@v3
       with:
@@ -52,7 +55,7 @@ jobs:
       with:
         languages: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
-        queries: +security-extended,security-and-quality,code-scanning  # Deep scan with extra queries
+        queries: +security-extended,security-and-quality  # Removed non-existent code-scanning pack
         ram: 8192  # Allocate more memory for large scans
 
     - name: Perform CodeQL Analysis
