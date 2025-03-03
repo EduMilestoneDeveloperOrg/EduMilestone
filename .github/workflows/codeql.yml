@@ -1,51 +1,56 @@
-name: "CodeQL Advanced - Deep Scan"
+name: "CodeQL Advanced - Deep Scan"  # Name of the workflow
 
 on:
-  workflow_call:  # Allows this workflow to be triggered by other workflows
+  workflow_call:  # This allows the workflow to be triggered by other workflows
     inputs:
-      language:
-        required: true
-        type: string
-      build-mode:
-        required: true
-        type: string
+      language:  # The input parameter for specifying the language to analyze (e.g., java, python, etc.)
+        required: true  # This input is required when calling this workflow
+        type: string  # The input type is a string
+      build-mode:  # The input parameter for specifying the build mode (e.g., autobuild, manual)
+        required: true  # This input is required when calling this workflow
+        type: string  # The input type is a string
 
 jobs:
   analyze:
-    name: Analyze (${{ inputs.language }})
-    runs-on: ${{ (inputs.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
+    name: Analyze (${{ inputs.language }})  # The name of the job, dynamically set based on the language input
+    runs-on: ${{ (inputs.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}  # Choose the appropriate runner based on the language input
     permissions:
-      security-events: write
-      packages: read
-      actions: read
-      contents: read
+      # Permissions required for running this workflow
+      security-events: write  # Grants write permissions for security events, required for scanning
+      packages: read  # Grants read access to internal or private CodeQL packs
+      actions: read  # Grants read access to actions used in this workflow
+      contents: read  # Grants read access to repository contents (needed for analyzing the code)
 
     strategy:
-      fail-fast: false
+      fail-fast: false  # Do not stop the workflow immediately if one of the jobs fails, continue running
       matrix:
         include:
-          - language: ${{ inputs.language }}
-            build-mode: ${{ inputs.build-mode }}
+          - language: ${{ inputs.language }}  # The language input passed when calling the workflow
+            build-mode: ${{ inputs.build-mode }}  # The build mode input passed when calling the workflow
 
     steps:
+    # Step 1: Checkout the repository so the code can be analyzed
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v4  # The `checkout` action checks out the repository content so the code can be analyzed
 
+    # Step 2: Initialize the CodeQL analysis tool with the given parameters
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
+      uses: github/codeql-action/init@v3  # The `init` action sets up the CodeQL tools for analysis
       with:
-        languages: ${{ inputs.language }}
-        build-mode: ${{ inputs.build-mode }}
-        queries: +security-extended,security-and-quality
-        ram: 8192  # Allocating more memory for larger scans
+        languages: ${{ inputs.language }}  # Pass the language input for analysis (e.g., java, python)
+        build-mode: ${{ inputs.build-mode }}  # Pass the build-mode input to define how the code should be built (e.g., autobuild or manual)
+        queries: +security-extended,security-and-quality  # Adds security and quality queries for a more thorough scan
+        ram: 8192  # Allocates more memory (8GB) to the process for larger scans to improve performance
 
-    - if: matrix.build-mode == 'manual'
-      shell: bash
+    # Step 3: Conditionally handle the manual build mode (in case of custom build requirements)
+    - if: matrix.build-mode == 'manual'  # Only execute this step if the build mode is set to 'manual'
+      shell: bash  # Use the bash shell to run the commands
       run: |
-        echo 'Please run manual build commands'
-        exit 1
+        echo 'Please run manual build commands'  # Notify the user that manual build commands should be run
+        exit 1  # Exit with an error code because the build needs to be manually handled
 
+    # Step 4: Perform the actual CodeQL analysis on the codebase
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
+      uses: github/codeql-action/analyze@v3  # The `analyze` action runs the CodeQL analysis on the checked-out repository
       with:
-        category: "/language:${{ inputs.language }}"
+        category: "/language:${{ inputs.language }}"  # Specifies the language category for the analysis based on the input language (e.g., java, python)
