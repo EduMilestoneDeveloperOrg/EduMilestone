@@ -184,7 +184,7 @@ jobs:
 
   # 2️⃣ Security & Code Quality Checks (All depend on PR validation)
   security_scan:
-    name: Run CodeQL Advanced Deep Scan
+    name: 🛡️ Run CodeQL Advanced Deep Scan
     needs: [enforce_pr_files_limit]
     uses: ./.github/workflows/codeql.yml  # Reusable CodeQL deep scan workflow
     with:
