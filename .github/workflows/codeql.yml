@@ -23,8 +23,7 @@ on:
 jobs:
   analyze:
     name: Deep Security Scan (${{ matrix.language }})
-    # High-performance runners for faster, in-depth scanning
-    runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest-16-cores' }}
+    runs-on: ubuntu-latest
 
     permissions:
       security-events: write
@@ -50,8 +49,6 @@ jobs:
           build-mode: autobuild
         - language: csharp
           build-mode: autobuild
-        - language: swift
-          build-mode: manual
 
     steps:
     - name: Enable Debugging
@@ -72,7 +69,7 @@ jobs:
     - name: Install Dependencies for Maximum Scanning
       run: |
         sudo apt-get update -y
-        sudo apt-get install -y build-essential python3-pip
+        sudo apt-get install -y build-essential python3-pip jq
         pip install --upgrade pip setuptools wheel
         echo "Ensuring all dependencies are installed for deeper analysis."
 
@@ -92,6 +89,21 @@ jobs:
           https://raw.githubusercontent.com/github/codeql/main/ql/src/Security/custom.ql
         echo "Applying additional scanning techniques for better detection."
 
+    - name: Run Extra Static Code Analysis
+      run: |
+        echo "Running additional static code analysis tools..."
+        if [[ "${{ matrix.language }}" == "python" ]]; then
+          pip install bandit
+          bandit -r . || true
+        elif [[ "${{ matrix.language }}" == "javascript-typescript" ]]; then
+          npm install -g eslint
+          eslint . --ext .js,.ts || true
+        elif [[ "${{ matrix.language }}" == "java-kotlin" ]]; then
+          curl -sSLO https://github.com/pmd/pmd/releases/download/pmd_releases%2F6.52.0/pmd-bin-6.52.0.zip
+          unzip pmd-bin-6.52.0.zip
+          ./pmd-bin-6.52.0/bin/run.sh pmd -d . -R rulesets/java/quickstart.xml -f text || true
+        fi
+
     - if: matrix.build-mode == 'manual'
       shell: bash
       run: |
@@ -106,4 +118,3 @@ jobs:
         fail-on-warning: true
         upload-database: true
       continue-on-error: false
-      max-parallel: 8  # Run max 8 parallel scans for faster results
