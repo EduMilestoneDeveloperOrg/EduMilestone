@@ -248,6 +248,7 @@ jobs:
           fetch-depth: 0  # Fetch full history to avoid shallow clone issues
   
       - name: 🚀 Run MegaLinter with Autofix (Docker)
+        id: linter
         run: |
           docker run \
             -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
@@ -256,6 +257,7 @@ jobs:
             -w /tmp/lint \
             megalinter/megalinter:latest \
             --fix
+          cp -r /tmp/lint/report ${{ github.workspace }}/megalinter-report
   
       - name: 💬 Add Lint Review Comments
         if: failure()
@@ -263,20 +265,20 @@ jobs:
         with:
           script: |
             const { context, github } = require('@actions/github');
-            const lintResults = `$(docker run megalinter/megalinter:latest --reporter=github-pr-review-report | sed 's/^/\\n/')`;
+            const lintResults = require('fs').readFileSync('${{ github.workspace }}/megalinter-report/linters_logs/ERROR-KOTLIN_KTLINT.log', 'utf8');
             await github.issues.createComment({
               ...context.repo,
               issue_number: context.issue.number,
-              body: `Linting issues detected:\n${lintResults}`
+              body: `Linting issues detected:\n\`\`\`${lintResults}\`\`\``
             });
   
       - name: ✅ Re-check Linting
-        if: steps.lint.outcome == 'failure'
+        if: failure()
         uses: actions/github-script@v4
         with:
           script: |
             const { context, github } = require('@actions/github');
-            const lintResults = `$(docker run megalinter/megalinter:latest --reporter=github-pr-review-report | sed 's/^/\\n/')`;
+            const lintResults = require('fs').readFileSync('${{ github.workspace }}/megalinter-report/linters_logs/ERROR-KOTLIN_KTLINT.log', 'utf8');
             if (!lintResults.trim()) {
               await github.pulls.createReview({
                 ...context.repo,
@@ -288,6 +290,13 @@ jobs:
               await github.issues.createComment({
                 ...context.repo,
                 issue_number: context.issue.number,
-                body: `Linting issues still detected:\n${lintResults}`
+                body: `Linting issues still detected:\n\`\`\`${lintResults}\`\`\``
               });
             }
+  
+      - name: 📄 Upload Linting Error Report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: megalinter-report
+          path: ${{ github.workspace }}/megalinter-report
