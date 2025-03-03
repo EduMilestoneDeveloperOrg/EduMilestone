@@ -288,3 +288,4 @@ jobs:
               -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               -d '{"state": "failure", "context": "ci/cd", "description": "One or more checks failed.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
             exit 1
+          fi
