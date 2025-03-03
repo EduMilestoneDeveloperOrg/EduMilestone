@@ -24,6 +24,7 @@ jobs:
         include:
           - language: java-kotlin
             build-mode: autobuild
+        # Only Java-Kotlin language for analysis
 
     steps:
     - name: Checkout repository
@@ -34,15 +35,16 @@ jobs:
       with:
         languages: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
-        # Corrected the queries list
+        # Adding additional advanced query packs for deeper scanning
         queries: |
-          security-extended
-          security-and-quality
-          security-audit
-          vulnerability
-          performance
-          maintainability
-          best-practices  # Advanced query packs for a deeper scan
+          +security-extended,
+          security-and-quality,
+          security-audit,
+          vulnerability,
+          performance,
+          maintainability,
+          best-practices,
+          code-ql
         ram: 8192  # Allocating more memory for larger scans
 
     - if: matrix.build-mode == 'manual'
