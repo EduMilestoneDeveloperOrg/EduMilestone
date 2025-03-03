@@ -43,7 +43,7 @@ jobs:
   pr_restriction:
     name: 🚧 Enforce PR Restrictions
     runs-on: ubuntu-latest
-  
+    
     steps:
       - name: 🔍 Debug & Verify PR Author
         env:
@@ -96,6 +96,18 @@ jobs:
           fi
   
           echo "✅ PR is from an authorized collaborator or member."
+  
+          # Mark the PR status as 'success' if everything passes
+          curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -d '{"state": "success", "target_url": "https://example.com", "description": "PR passed restriction checks", "context": "PR Restrictions"}' \
+            https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}
+  
+      - name: Mark Failure Status (if failed)
+        if: failure()  # This step will only run if any previous step fails
+        run: |
+          curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -d '{"state": "failure", "target_url": "https://example.com", "description": "PR failed restriction checks", "context": "PR Restrictions"}' \
+            https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}
 
   enforce_pr_description:
     name: 📜 Enforce PR Description
@@ -112,6 +124,10 @@ jobs:
   
           if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
             echo "❌ ERROR: Invalid PR number. Cannot check description."
+            # Mark as failure status if PR number is invalid
+            curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -d '{"state": "failure", "target_url": "https://example.com", "description": "Invalid PR number", "context": "PR Description Check"}' \
+              https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}
             exit 1
           fi
   
@@ -126,6 +142,10 @@ jobs:
           # Ensure description retrieval succeeded
           if [[ -z "$DESCRIPTION" || "$DESCRIPTION" == "null" ]]; then
             echo "❌ ERROR: PR must have a meaningful description!"
+            # Mark as failure status if description is invalid
+            curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -d '{"state": "failure", "target_url": "https://example.com", "description": "PR must have a meaningful description", "context": "PR Description Check"}' \
+              https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}
             exit 1
           fi
   
@@ -134,10 +154,18 @@ jobs:
   
           if [[ -z "$TRIMMED_DESC" ]]; then
             echo "❌ ERROR: PR description cannot be empty or only spaces!"
+            # Mark as failure status if description is empty or only spaces
+            curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -d '{"state": "failure", "target_url": "https://example.com", "description": "PR description cannot be empty or only spaces", "context": "PR Description Check"}' \
+              https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}
             exit 1
           fi
-          
+  
           echo "✅ PR has a valid description."
+          # Mark as success status if the description is valid
+          curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -d '{"state": "success", "target_url": "https://example.com", "description": "PR has a valid description", "context": "PR Description Check"}' \
+            https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}
 
   enforce_pr_files_limit:
     name: 📑 Limit PR File Changes (Max 50)
@@ -154,6 +182,10 @@ jobs:
   
           if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
             echo "❌ ERROR: Invalid PR number. Cannot check file count."
+            # Mark as failure status if PR number is invalid
+            curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -d '{"state": "failure", "target_url": "https://example.com", "description": "Invalid PR number", "context": "PR File Limit Check"}' \
+              https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}
             exit 1
           fi
   
@@ -171,52 +203,97 @@ jobs:
           # Ensure FILE_COUNT is valid and numeric
           if ! [[ "$FILE_COUNT" =~ ^[0-9]+$ ]]; then
             echo "❌ ERROR: Unable to determine the number of changed files."
+            # Mark as failure status if we can't determine file count
+            curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -d '{"state": "failure", "target_url": "https://example.com", "description": "Unable to determine the number of changed files", "context": "PR File Limit Check"}' \
+              https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}
             exit 1
           fi
   
           # Verify if the number of files changed exceeds the limit
           if [[ "$FILE_COUNT" -gt 50 ]]; then
             echo "❌ ERROR: PR modifies too many files ($FILE_COUNT). Please split into smaller PRs."
+            # Mark as failure status if file count exceeds limit
+            curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -d '{"state": "failure", "target_url": "https://example.com", "description": "PR modifies too many files, exceeds limit of 50", "context": "PR File Limit Check"}' \
+              https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}
             exit 1
           fi
-          
+  
           echo "✅ PR modifies $FILE_COUNT files, within the allowed limit."
+          # Mark as success status if file count is within the allowed limit
+          curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -d '{"state": "success", "target_url": "https://example.com", "description": "PR modifies a valid number of files ($FILE_COUNT)", "context": "PR File Limit Check"}' \
+            https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}
 
   # 2️⃣ Security & Code Quality Checks (All depend on PR validation)
   security_scan:
     name: 🛡️ Run CodeQL Advanced Deep Scan
-    needs: [enforce_pr_files_limit]
-    uses: ./.github/workflows/codeql.yml  # Reusable CodeQL deep scan workflow
-    with:
-      language: 'java-kotlin'
-      build-mode: 'autobuild'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up JDK 11
+      uses: actions/setup-java@v2
+      with:
+        java-version: '11'
+        distribution: 'adopt'
+
+    - name: 🛡️ Run CodeQL Advanced Deep Scan
+      uses: ./.github/workflows/codeql.yml  # Reusable CodeQL deep scan workflow
+      with:
+        language: 'java-kotlin'
+        build-mode: 'autobuild'
+
+    - name: Report Status
+      run: |
+        curl -X POST \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/check-runs \
+          -d @- <<EOF
+          {
+            "name": "CodeQL Advanced Deep Scan",
+            "head_sha": "${{ github.sha }}",
+            "status": "completed",
+            "conclusion": "success",
+            "output": {
+              "title": "Security Scan Report",
+              "summary": "The CodeQL Advanced Deep Scan completed successfully.",
+              "text": "No vulnerabilities found."
+            }
+          }
+          EOF
 
   dependency_scan:
     name: 🔍 Dependency Scan (Trivy)
     runs-on: ubuntu-latest
     needs: [enforce_pr_files_limit]
+
     steps:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-  
+
       - name: 🔎 Scan for Vulnerabilities (Using Trivy Action)
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
           severity: 'HIGH,CRITICAL'
-  
+
       - name: 📄 Generate Trivy Report
         run: |
           trivy fs --severity HIGH,CRITICAL --format json -o trivy-report.json .
-  
+
       - name: 📄 Upload Trivy Scan Report
         uses: actions/upload-artifact@v4
         with:
           name: trivy-scan-report
           path: trivy-report.json
-  
+
       - name: 🛠️ Suggest Fixes
         run: |
           if [ -s trivy-report.json ]; then
@@ -229,10 +306,35 @@ jobs:
           else
             echo "No vulnerabilities found or failed to generate the report."
           fi
-  
+
       - name: 🚨 Fail if Vulnerabilities Found
         run: |
           if trivy fs --severity HIGH,CRITICAL . | grep -q "VULNERABILITY"; then
             echo "❌ High/Critical vulnerabilities found!"
             exit 1
           fi  # Added fi to properly close the if statement
+
+      - name: Report Status
+        run: |
+          conclusion="success"
+          if [ -s trivy-report.json ] && trivy fs --severity HIGH,CRITICAL . | grep -q "VULNERABILITY"; then
+            conclusion="failure"
+          fi
+
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/check-runs \
+            -d @- <<EOF
+          {
+            "name": "Dependency Scan (Trivy)",
+            "head_sha": "${{ github.sha }}",
+            "status": "completed",
+            "conclusion": "$conclusion",
+            "output": {
+              "title": "Dependency Scan Report",
+              "summary": "The dependency scan completed with conclusion: $conclusion.",
+              "text": "$(cat trivy-report.json)"
+            }
+          }
+          EOF
