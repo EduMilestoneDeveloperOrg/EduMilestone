@@ -11,7 +11,7 @@ on:
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
-    runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
+    runs-on: ${{ matrix.language == 'swift' && 'macos-latest' || 'ubuntu-latest' }}
 
     permissions:
       security-events: write
@@ -23,7 +23,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - language: java-kotlin
+          - language: java
+            build-mode: autobuild  # Keeping original autobuild for Gradle projects
+          - language: kotlin
             build-mode: autobuild  # Keeping original autobuild for Gradle projects
 
     steps:
@@ -39,6 +41,9 @@ jobs:
 
     - name: Validate Gradle Wrapper
       uses: gradle/wrapper-validation-action@v1
+      with:
+        min-wrapper-count: 1
+        allow-snapshots: false
 
     - name: Cache Gradle Dependencies
       uses: actions/cache@v3
@@ -55,7 +60,7 @@ jobs:
       with:
         languages: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
-        queries: +security-extended,security-and-quality  # Removed non-existent code-scanning pack
+        queries: security-extended,security-and-quality  # Fixed queries
         ram: 8192  # Allocate more memory for large scans
 
     - name: Perform CodeQL Analysis
