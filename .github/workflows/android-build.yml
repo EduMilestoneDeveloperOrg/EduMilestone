@@ -247,14 +247,15 @@ jobs:
         with:
           fetch-depth: 0  # Fetch full history to avoid shallow clone issues
   
-      - name: 🚀 Run MegaLinter (Docker)
+      - name: 🚀 Run MegaLinter with Autofix (Docker)
         run: |
           docker run \
             -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
             -v ${{ github.workspace }}:/tmp/lint \
             -v /tmp/lint/.cache:/tmp/lint/.cache \
             -w /tmp/lint \
-            megalinter/megalinter:latest
+            megalinter/megalinter:latest \
+            --fix
   
       - name: 💬 Add Lint Review Comments
         if: failure()
@@ -270,7 +271,7 @@ jobs:
             });
   
       - name: ✅ Re-check Linting
-        if: success() || (steps.linter.outputs.lint_failures && !failure())
+        if: steps.lint.outcome == 'failure'
         uses: actions/github-script@v4
         with:
           script: |
