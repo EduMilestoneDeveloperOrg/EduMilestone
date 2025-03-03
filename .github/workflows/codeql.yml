@@ -9,7 +9,7 @@
 # the `language` matrix defined below to confirm you have the correct set of
 # supported CodeQL languages.
 #
-name: "CodeQL Ultra Advanced Scan"
+name: "CodeQL Advanced"
 
 on:
   push:
@@ -17,14 +17,12 @@ on:
   pull_request:
     branches: [ "master" ]
   schedule:
-    - cron: '34 7 * * 0'  # Weekly scan (unchanged)
-    - cron: '0 3 * * *'   # Daily scan at 3 AM UTC (new)
+    - cron: '33 23 * * 0'
 
 jobs:
   analyze:
-    name: Deep Security Scan (${{ matrix.language }})
-    runs-on: ubuntu-latest
-
+    name: Analyze (${{ matrix.language }})
+    runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
     permissions:
       security-events: write
       packages: read
@@ -37,84 +35,70 @@ jobs:
         include:
         - language: java-kotlin
           build-mode: autobuild
-        - language: javascript-typescript
-          build-mode: autobuild
-        - language: python
-          build-mode: autobuild
-        - language: c-cpp
-          build-mode: manual
-        - language: go
-          build-mode: autobuild
-        - language: ruby
-          build-mode: autobuild
-        - language: csharp
-          build-mode: autobuild
 
     steps:
-    - name: Enable Debugging
-      run: echo "ACTIONS_RUNNER_DEBUG=true" >> $GITHUB_ENV
-
     - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # Fetches full history for better analysis
 
-    - name: Setup Java (For Manual Build Support)
-      if: matrix.build-mode == 'manual'
-      uses: actions/setup-java@v3
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-
-    - name: Install Dependencies for Maximum Scanning
-      run: |
-        sudo apt-get update -y
-        sudo apt-get install -y build-essential python3-pip jq
-        pip install --upgrade pip setuptools wheel
-        echo "Ensuring all dependencies are installed for deeper analysis."
-
-    # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
-        queries: +security-extended,security-and-quality,security-experimental,security-dataflow,security-cwe,security-queries
-
-    - name: Enable Third-Party Security Queries
-      run: |
-        echo "Downloading additional security query packs..."
-        mkdir -p .github/codeql-custom-queries
-        curl -L -o .github/codeql-custom-queries/extra-queries.ql \
-          https://raw.githubusercontent.com/github/codeql/main/ql/src/Security/custom.ql
-        echo "Applying additional scanning techniques for better detection."
-
-    - name: Run Extra Static Code Analysis
-      run: |
-        echo "Running additional static code analysis tools..."
-        if [[ "${{ matrix.language }}" == "python" ]]; then
-          pip install bandit
-          bandit -r . || true
-        elif [[ "${{ matrix.language }}" == "javascript-typescript" ]]; then
-          npm install -g eslint
-          eslint . --ext .js,.ts || true
-        elif [[ "${{ matrix.language }}" == "java-kotlin" ]]; then
-          curl -sSLO https://github.com/pmd/pmd/releases/download/pmd_releases%2F6.52.0/pmd-bin-6.52.0.zip
-          unzip pmd-bin-6.52.0.zip
-          ./pmd-bin-6.52.0/bin/run.sh pmd -d . -R rulesets/java/quickstart.xml -f text || true
-        fi
+        queries: security-extended, security-and-quality, security-experimental, codeql-suites/java-lgtm-full.qls
 
     - if: matrix.build-mode == 'manual'
       shell: bash
       run: |
-        echo 'Running manual build process...'
-        make bootstrap
-        make release
+        echo 'If you are using a "manual" build mode for one or more of the' \
+          'languages you are analyzing, replace this with the commands to build' \
+          'your code, for example:'
+        echo '  make bootstrap'
+        echo '  make release'
+        exit 1
 
-    - name: Perform Deep CodeQL Analysis
+    - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
       with:
         category: "/language:${{matrix.language}}"
-        fail-on-warning: true
-        upload-database: true
-      continue-on-error: false
+
+    # OWASP Dependency Check for library vulnerabilities
+    - name: Run OWASP Dependency Check
+      uses: dependency-check/Dependency-Check_Action@main
+      with:
+        project: "Dependency-Check"
+        format: "HTML"
+        out: "reports"
+
+    # PMD for static code analysis
+    - name: Run PMD Static Analysis
+      uses: pmd/pmd-github-action@v1
+      with:
+        rulesets: "rulesets/java/quickstart.xml"
+
+    # SpotBugs for static code analysis
+    - name: Run SpotBugs Analysis
+      uses: spotbugs/spotbugs-github-action@v1
+      with:
+        path: "."
+
+    # Semgrep for deep static security scanning
+    - name: Run Semgrep
+      uses: returntocorp/semgrep-action@v1
+      with:
+        config: "p/ci"
+
+    # Gitleaks for secret detection
+    - name: Run Gitleaks Secret Scan
+      uses: gitleaks/gitleaks-action@v2
+      with:
+        config: "gitleaks.toml"
+
+    # Trivy for deep vulnerability & misconfiguration scanning
+    - name: Run Trivy Security Scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: "fs"
+        ignore-unfixed: true
+        format: "table"
+        output: "trivy-results.txt"
