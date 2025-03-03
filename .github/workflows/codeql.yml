@@ -33,7 +33,7 @@ jobs:
       matrix:
         include:
           - language: java-kotlin
-            build-mode: autobuild
+            build-mode: autobuild  # Ensures autobuild is enabled for java-kotlin
         # CodeQL supports the following values keywords for 'language': 'c-cpp', 'csharp', 'go', 'java-kotlin', 'javascript-typescript', 'python', 'ruby', 'swift'
         # Use `c-cpp` to analyze code written in C, C++ or both
         # Use 'java-kotlin' to analyze code written in Java, Kotlin or both
@@ -57,7 +57,7 @@ jobs:
       uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
-        build-mode: ${{ matrix.build-mode }}
+        build-mode: ${{ matrix.build-mode }}  # Ensures autobuild is used for java-kotlin
         # Added security-extended, security-and-quality, performance, maintainability, and best-practices for deeper scan
         queries: |
           +security-extended,
