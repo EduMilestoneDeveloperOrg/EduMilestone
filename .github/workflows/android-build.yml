@@ -250,7 +250,7 @@ jobs:
             exit 1
           fi  # Added fi to properly close the if statement
 
-  # Final Job merge check: Reporting Status to GitHub API
+ # Final Job merge check: Reporting Status to GitHub API
   merge_check:
     name: ✅ Final Merge Check (All Jobs Status)
     runs-on: ubuntu-latest
@@ -271,16 +271,20 @@ jobs:
               break
             fi
           done
-
+  
           if [ "$SUCCESS" == true ]; then
             echo "✅ All jobs passed. Reporting success."
             curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
               -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               -d '{"state": "success", "context": "ci/cd", "description": "All checks passed.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+          
+            # Auto merge the pull request
+            curl -X PUT "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/merge" \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -d '{"commit_title": "Auto-merged by CI", "merge_method": "merge"}'
           else
             echo "❌ One or more jobs failed. Reporting failure."
             curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
               -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               -d '{"state": "failure", "context": "ci/cd", "description": "One or more checks failed.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
             exit 1
-          fi
