@@ -53,6 +53,7 @@ jobs:
         # see https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/customizing-your-advanced-setup-for-code-scanning.
         # If you are analyzing a compiled language, you can modify the 'build-mode' for that language to customize how
         # your codebase is analyzed, see https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/codeql-code-scanning-for-compiled-languages
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -62,6 +63,13 @@ jobs:
     # or others). This is typically only required for manual builds.
     # - name: Setup runtime (example)
     #   uses: actions/setup-example@v1
+
+    - name: Setup Environment
+      run: |
+        echo "Setting up additional dependencies..."
+        sudo apt-get update -y
+        sudo apt-get install -y jq curl
+        echo "Setup completed."
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
@@ -74,7 +82,8 @@ jobs:
         # Prefix the list here with "+" to use these queries and those in the config file.
 
         # For more details on CodeQL's query packs, refer to: https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
-        # queries: security-extended,security-and-quality
+        queries: +security-extended,security-and-quality
+        config-file: .github/codeql-config.yml
 
     # If the analyze step fails for one of the languages you are analyzing with
     # "We were unable to automatically build your code", modify the matrix above
@@ -96,3 +105,27 @@ jobs:
       uses: github/codeql-action/analyze@v3
       with:
         category: "/language:${{matrix.language}}"
+        upload: true
+        output: results.sarif
+
+    - name: Upload SARIF report
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: results.sarif
+
+    - name: Fail on High Severity Issues
+      if: always()
+      run: |
+        echo "Checking for high severity issues..."
+        count=$(jq '[.runs[].results[] | select(.level=="error")] | length' results.sarif)
+        if [ "$count" -gt 0 ]; then
+          echo "❌ High severity issues found: $count"
+          exit 1
+        else
+          echo "✅ No high severity issues detected."
+
+    - name: Notify on Failure
+      if: failure()
+      run: |
+        echo "Sending notification about failure..."
+        curl -X POST -H 'Content-type: application/json' --data '{"text":"CodeQL analysis failed! Check logs for details."}' $SLACK_WEBHOOK_URL
