@@ -37,6 +37,7 @@ permissions:
   contents: write
   security-events: write  # Required for CodeQL scanning
   actions: write
+  statuses: write
 
 jobs:
 # 1️⃣ Pre-Checks & PR Validation (No dependencies)
