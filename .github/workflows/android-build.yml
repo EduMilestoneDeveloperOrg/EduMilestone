@@ -250,8 +250,7 @@ jobs:
             exit 1
           fi  # Added fi to properly close the if statement
 
- # Final Job merge check: Reporting Status to GitHub API
-# Final Job merge check: Reporting Status to GitHub API
+  # Final Job merge check: Reporting Status to GitHub API
   merge_check:
     name: ✅ Final Merge Check (All Jobs Status)
     runs-on: ubuntu-latest
@@ -262,17 +261,36 @@ jobs:
       - security_scan
       - dependency_scan
     steps:
-      - name: Report Final Status to GitHub API
+      - name: Add PR to merge queue
         run: |
-          # Determine the overall status of all jobs
+          echo "🔍 Adding PR to merge queue."
+          curl -X PUT "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}" \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -d '{"state": "open"}'
+
+      - name: Check Status of All Jobs
+        run: |
+          echo "🔍 Checking the status of all jobs."
           SUCCESS=true
           for job in pr_restriction enforce_pr_description enforce_pr_files_limit security_scan dependency_scan; do
-            if [[ "${{ job.status }}" == "failure" ]]; then
+            job_status="${{ job.status }}"
+            echo "🔹 Checking job status for: $job"
+            if [[ "$job_status" == "failure" ]]; then
               SUCCESS=false
+              echo "❌ Job '$job' failed!"
               break
             fi
           done
   
+          if [ "$SUCCESS" == true ]; then
+            echo "✅ All jobs passed. Proceeding to report success."
+          else
+            echo "❌ One or more jobs failed. Reporting failure."
+            exit 1
+
+      - name: Report Final Status to GitHub API
+        run: |
+          # Report success or failure to GitHub API
           if [ "$SUCCESS" == true ]; then
             echo "✅ All jobs passed. Reporting success."
             curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
@@ -283,6 +301,7 @@ jobs:
             curl -X PUT "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/merge" \
               -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               -d '{"commit_title": "Auto-merged by CI", "merge_method": "rebase"}'
+          
           else
             echo "❌ One or more jobs failed. Reporting failure."
             curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
