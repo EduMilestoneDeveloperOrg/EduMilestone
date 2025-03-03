@@ -257,18 +257,20 @@ jobs:
             -w /tmp/lint \
             megalinter/megalinter:latest \
             --fix
-          cp -r /tmp/lint/report ${{ github.workspace }}/megalinter-report
+          mkdir -p ${{ github.workspace }}/megalinter-report
+          cp -r /tmp/lint/report/* ${{ github.workspace }}/megalinter-report
   
       - name: 💬 Add Lint Review Comments
         if: failure()
         uses: actions/github-script@v4
         with:
           script: |
-            const { context, github } = require('@actions/github');
-            const lintResults = require('fs').readFileSync('${{ github.workspace }}/megalinter-report/linters_logs/ERROR-KOTLIN_KTLINT.log', 'utf8');
-            await github.issues.createComment({
-              ...context.repo,
-              issue_number: context.issue.number,
+            const github = require('@actions/github');
+            const fs = require('fs');
+            const lintResults = fs.readFileSync('${{ github.workspace }}/megalinter-report/linters_logs/ERROR-KOTLIN_KTLINT.log', 'utf8');
+            github.issues.createComment({
+              ...github.context.repo,
+              issue_number: github.context.issue.number,
               body: `Linting issues detected:\n\`\`\`${lintResults}\`\`\``
             });
   
@@ -277,19 +279,20 @@ jobs:
         uses: actions/github-script@v4
         with:
           script: |
-            const { context, github } = require('@actions/github');
-            const lintResults = require('fs').readFileSync('${{ github.workspace }}/megalinter-report/linters_logs/ERROR-KOTLIN_KTLINT.log', 'utf8');
+            const github = require('@actions/github');
+            const fs = require('fs');
+            const lintResults = fs.readFileSync('${{ github.workspace }}/megalinter-report/linters_logs/ERROR-KOTLIN_KTLINT.log', 'utf8');
             if (!lintResults.trim()) {
-              await github.pulls.createReview({
-                ...context.repo,
-                pull_number: context.issue.number,
+              github.pulls.createReview({
+                ...github.context.repo,
+                pull_number: github.context.issue.number,
                 event: 'APPROVE',
                 body: 'Linting issues resolved. Approved.'
               });
             } else {
-              await github.issues.createComment({
-                ...context.repo,
-                issue_number: context.issue.number,
+              github.issues.createComment({
+                ...github.context.repo,
+                issue_number: github.context.issue.number,
                 body: `Linting issues still detected:\n\`\`\`${lintResults}\`\`\``
               });
             }
@@ -300,3 +303,7 @@ jobs:
         with:
           name: megalinter-report
           path: ${{ github.workspace }}/megalinter-report
+          if-no-files-found: warn
+          compression-level: 6
+          overwrite: false
+          include-hidden-files: false
