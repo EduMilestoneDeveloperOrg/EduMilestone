@@ -35,16 +35,14 @@ jobs:
       with:
         languages: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
-        # Adding additional advanced query packs for deeper scanning
+        # Removed security-audit, keeping other valid query packs
         queries: |
           +security-extended,
           security-and-quality,
-          security-audit,
           vulnerability,
           performance,
           maintainability,
-          best-practices,
-          code-ql
+          best-practices
         ram: 8192  # Allocating more memory for larger scans
 
     - if: matrix.build-mode == 'manual'
