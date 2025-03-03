@@ -62,7 +62,6 @@ jobs:
         queries: |
           +security-extended,
           security-and-quality,
-          security-audit,
           performance,
           maintainability,
           best-practices,
