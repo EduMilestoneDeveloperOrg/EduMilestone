@@ -12,7 +12,7 @@ on:
 
 jobs:
   analyze:
-    name: Analyze (${{ inputs.language }})  # Job name dynamically set based on language input
+    name: 🛡️ Analyze (${{ inputs.language }})  # Job name dynamically set based on language input
     runs-on: ${{ (inputs.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}  # Runner type based on the language
     permissions:
       security-events: write  # Permission to write security events
@@ -49,7 +49,7 @@ jobs:
         exit 1  # Fail the job if manual build commands aren't provided
 
     # Step 4: Perform the actual CodeQL analysis using the initialized setup
-    - name: Perform CodeQL Analysis
+    - name: 🛡️ Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
       with:
         category: "/language:${{ inputs.language }}"  # Specify the language category for CodeQL analysis
