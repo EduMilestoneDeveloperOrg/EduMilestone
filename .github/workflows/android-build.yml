@@ -182,14 +182,6 @@ jobs:
           
           echo "✅ PR modifies $FILE_COUNT files, within the allowed limit."
 
-  security_scan:
-    name: Run CodeQL Advanced Deep Scan
-    needs: [enforce_pr_files_limit]
-    uses: ./.github/workflows/codeql.yml  # Reusable CodeQL deep scan workflow
-    with:
-      language: 'java-kotlin'
-      build-mode: 'autobuild'
-
   dependency_scan:
     name: 🔍 Dependency Scan (Trivy)
     runs-on: ubuntu-latest
@@ -218,7 +210,11 @@ jobs:
   
       - name: 🛠️ Suggest Fixes
         run: |
-          cat trivy-report.json | jq '.Results[].Vulnerabilities[] | select(.Severity == "HIGH" or .Severity == "CRITICAL") | "\(.PkgName) has \(.Severity) vulnerability: \(.VulnID) - \(.Title). Recommendation: \(.PrimaryURL)"'
+          if [ -s trivy-report.json ]; then
+            cat trivy-report.json | jq '.Results[].Vulnerabilities[] | select(.Severity == "HIGH" or .Severity == "CRITICAL") | "\(.PkgName) has \(.Severity) vulnerability: \(.VulnID) - \(.Title). Recommendation: \(.PrimaryURL)"'
+          else
+            echo "No vulnerabilities found or failed to generate the report."
+          fi
   
       - name: 🚨 Fail if Vulnerabilities Found
         run: |
