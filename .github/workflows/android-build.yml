@@ -212,7 +212,7 @@ jobs:
           trivy fs --severity HIGH,CRITICAL --format json -o trivy-report.json .
   
       - name: 📄 Upload Trivy Scan Report
-        uses: actions/upload-artifact@v4  # Updated to the latest version
+        uses: actions/upload-artifact@v4
         with:
           name: trivy-scan-report
           path: trivy-report.json
@@ -220,9 +220,9 @@ jobs:
       - name: 🛠️ Suggest Fixes
         run: |
           if [ -s trivy-report.json ]; then
-            vulnerabilities=$(cat trivy-report.json | jq '.Results[].Vulnerabilities | length')
+            vulnerabilities=$(cat trivy-report.json | jq '.Results[]?.Vulnerabilities | length')
             if [ "$vulnerabilities" -gt 0 ]; then
-              cat trivy-report.json | jq '.Results[].Vulnerabilities[] | select(.Severity == "HIGH" or .Severity == "CRITICAL") | "\(.PkgName) has \(.Severity) vulnerability: \(.VulnID) - \(.Title). Recommendation: \(.PrimaryURL)"'
+              cat trivy-report.json | jq '.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH" or .Severity == "CRITICAL") | "\(.PkgName) has \(.Severity) vulnerability: \(.VulnID) - \(.Title). Recommendation: \(.PrimaryURL)"'
             else
               echo "No high/critical vulnerabilities found."
             fi
