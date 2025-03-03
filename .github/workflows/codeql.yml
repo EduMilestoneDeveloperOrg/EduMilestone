@@ -62,7 +62,6 @@ jobs:
         queries: |
           +security-extended,
           security-and-quality,
-          performance,
           maintainability,
           best-practices,
           code-ql
