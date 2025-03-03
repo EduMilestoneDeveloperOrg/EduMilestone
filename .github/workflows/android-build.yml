@@ -189,3 +189,39 @@ jobs:
     with:
       language: 'java-kotlin'
       build-mode: 'autobuild'
+
+  dependency_scan:
+    name: 🔍 Dependency Scan (Trivy)
+    runs-on: ubuntu-latest
+    needs: [enforce_pr_files_limit]
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔎 Scan for Vulnerabilities (Using Trivy Action)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          severity: 'HIGH,CRITICAL'
+
+      - name: 📄 Generate Trivy Report
+        run: |
+          trivy fs --severity HIGH,CRITICAL --format json -o trivy-report.json .
+
+      - name: 📄 Upload Trivy Scan Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: trivy-scan-report
+          path: trivy-report.json
+
+      - name: 🛠️ Suggest Fixes
+        run: |
+          cat trivy-report.json | jq '.Results[].Vulnerabilities[] | select(.Severity == "HIGH" or .Severity == "CRITICAL") | "\(.PkgName) has \(.Severity) vulnerability: \(.VulnID) - \(.Title). Recommendation: \(.PrimaryURL)"'
+
+      - name: 🚨 Fail if Vulnerabilities Found
+        run: |
+          if trivy fs --severity HIGH,CRITICAL . | grep -q "VULNERABILITY"; then
+            echo "❌ High/Critical vulnerabilities found!"
+            exit 1
