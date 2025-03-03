@@ -236,3 +236,56 @@ jobs:
             echo "❌ High/Critical vulnerabilities found!"
             exit 1
           fi  # Added fi to properly close the if statement
+
+  linting:
+    name: 🎨 Lint Code (MegaLinter)
+    runs-on: ubuntu-latest
+    needs: [enforce_pr_files_limit]
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history to avoid shallow clone issues
+  
+      - name: 🚀 Install MegaLinter
+        run: |
+          npm install -g @megalinter/megalinter
+  
+      - name: 🎨 Run MegaLinter
+        run: |
+          megalinter --fix
+  
+      - name: 💬 Add Lint Review Comments
+        if: failure()
+        uses: actions/github-script@v4
+        with:
+          script: |
+            const { context, github } = require('@actions/github');
+            const lintResults = `$(megalinter --reporter=github-pr-review-report | sed 's/^/\\n/')`;
+            await github.issues.createComment({
+              ...context.repo,
+              issue_number: context.issue.number,
+              body: `Linting issues detected:\n${lintResults}`
+            });
+  
+      - name: ✅ Re-check Linting
+        if: success() || (steps.linter.outputs.lint_failures && !failure())
+        uses: actions/github-script@v4
+        with:
+          script: |
+            const { context, github } = require('@actions/github');
+            const lintResults = `$(megalinter --reporter=github-pr-review-report | sed 's/^/\\n/')`;
+            if (!lintResults.trim()) {
+              await github.pulls.createReview({
+                ...context.repo,
+                pull_number: context.issue.number,
+                event: 'APPROVE',
+                body: 'Linting issues resolved. Approved.'
+              });
+            } else {
+              await github.issues.createComment({
+                ...context.repo,
+                issue_number: context.issue.number,
+                body: `Linting issues still detected:\n${lintResults}`
+              });
+            }
