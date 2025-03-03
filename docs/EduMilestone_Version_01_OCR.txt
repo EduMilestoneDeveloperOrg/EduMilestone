@@ -5,6 +5,7 @@ Here is the optimized file structure for Version 01 of EduMilestone, focusing on
 *🛠 OCR Implementation Plan*
 Each *OCR issue* is solved through a *dedicated file* to ensure *high performance* and *maintainability*.  
 
+Version 01 Release:
 *Improve OCR Accuracy*
 ✅ *Preprocessing* (`preprocessing/PreprocessingUtils.kt`)  
 - Convert image to *grayscale*  
@@ -140,5 +141,4 @@ EduMilestone/                                           # 📌 Root Project Dire
 #IMPLEMENTATION_END_M/M01/PROD_TOOLS/OCR
 We’re developing OCR (Version 01 Release) first, followed by more features.
 Milestone Modules 01 → Tools Section Product (Contains multiple independent microservices like OCR, PDF Viewer, Word Processing, etc)
-
 #IMPLEMENTATION
