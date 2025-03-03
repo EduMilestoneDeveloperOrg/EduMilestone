@@ -236,3 +236,38 @@ jobs:
             echo "❌ High/Critical vulnerabilities found!"
             exit 1
           fi  # Added fi to properly close the if statement
+
+  # Final Job: Reporting Status to GitHub API
+  final_status_check:
+    name: ✅ Final Status Check (All Jobs Status)
+    runs-on: ubuntu-latest
+    needs:
+      - pr_restriction
+      - enforce_pr_description
+      - enforce_pr_files_limit
+      - security_scan
+      - dependency_scan
+    steps:
+      - name: Report Final Status to GitHub API
+        run: |
+          # Determine the overall status of all jobs
+          SUCCESS=true
+          for job in pr_restriction enforce_pr_description enforce_pr_files_limit security_scan dependency_scan; do
+            if [[ "${{ job.status }}" == "failure" ]]; then
+              SUCCESS=false
+              break
+            fi
+          done
+
+          if [ "$SUCCESS" == true ]; then
+            echo "✅ All jobs passed. Reporting success."
+            curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -d '{"state": "success", "context": "ci/cd", "description": "All checks passed.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+          else
+            echo "❌ One or more jobs failed. Reporting failure."
+            curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -d '{"state": "failure", "context": "ci/cd", "description": "One or more checks failed.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+            exit 1
+          fi
