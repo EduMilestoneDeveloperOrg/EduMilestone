@@ -59,12 +59,7 @@ jobs:
         languages: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
         # Added security-extended and security-and-quality for deep scan
-        queries: |
-          +security-extended,
-          security-and-quality,
-          maintainability,
-          best-practices,
-          code-ql
+        queries: +security-extended,security-and-quality,security-audit,vulnerability,maintainability,best-practices,code-ql
         ram: 8192  # Allocating more memory for larger scans
 
     # If the analyze step fails for one of the languages you are analyzing with
