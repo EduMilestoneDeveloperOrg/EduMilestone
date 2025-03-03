@@ -44,6 +44,9 @@ jobs:
       with:
         min-wrapper-count: 1
         allow-snapshots: false
+      env:
+        JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.14-7/x64
+        JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.14-7/x64
 
     - name: Cache Gradle Dependencies
       uses: actions/cache@v3
@@ -54,6 +57,11 @@ jobs:
         key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
         restore-keys: |
           gradle-${{ runner.os }}-
+
+    - name: Build with Gradle
+      run: ./gradlew build --no-daemon  # Run Gradle build command for auto-build
+      env:
+        JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.14-7/x64
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
