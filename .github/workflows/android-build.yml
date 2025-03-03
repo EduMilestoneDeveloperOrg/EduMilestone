@@ -235,3 +235,4 @@ jobs:
           if trivy fs --severity HIGH,CRITICAL . | grep -q "VULNERABILITY"; then
             echo "❌ High/Critical vulnerabilities found!"
             exit 1
+          fi  # Added fi to properly close the if statement
