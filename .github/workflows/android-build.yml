@@ -181,3 +181,11 @@ jobs:
           fi
           
           echo "✅ PR modifies $FILE_COUNT files, within the allowed limit."
+
+  security_scan:
+    name: Run CodeQL Advanced Deep Scan
+    needs: [enforce_pr_files_limit]
+    uses: ./.github/workflows/codeql.yml  # Reusable CodeQL deep scan workflow
+    with:
+      language: 'java-kotlin'
+      build-mode: 'autobuild'
