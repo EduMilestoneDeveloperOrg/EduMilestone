@@ -247,13 +247,14 @@ jobs:
         with:
           fetch-depth: 0  # Fetch full history to avoid shallow clone issues
   
-      - name: 🚀 Install MegaLinter
+      - name: 🚀 Run MegaLinter (Docker)
         run: |
-          npm install -g @megalinter/megalinter
-  
-      - name: 🎨 Run MegaLinter
-        run: |
-          megalinter --fix
+          docker run \
+            -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
+            -v ${{ github.workspace }}:/tmp/lint \
+            -v /tmp/lint/.cache:/tmp/lint/.cache \
+            -w /tmp/lint \
+            megalinter/megalinter:latest
   
       - name: 💬 Add Lint Review Comments
         if: failure()
@@ -261,7 +262,7 @@ jobs:
         with:
           script: |
             const { context, github } = require('@actions/github');
-            const lintResults = `$(megalinter --reporter=github-pr-review-report | sed 's/^/\\n/')`;
+            const lintResults = `$(docker run megalinter/megalinter:latest --reporter=github-pr-review-report | sed 's/^/\\n/')`;
             await github.issues.createComment({
               ...context.repo,
               issue_number: context.issue.number,
@@ -274,7 +275,7 @@ jobs:
         with:
           script: |
             const { context, github } = require('@actions/github');
-            const lintResults = `$(megalinter --reporter=github-pr-review-report | sed 's/^/\\n/')`;
+            const lintResults = `$(docker run megalinter/megalinter:latest --reporter=github-pr-review-report | sed 's/^/\\n/')`;
             if (!lintResults.trim()) {
               await github.pulls.createReview({
                 ...context.repo,
