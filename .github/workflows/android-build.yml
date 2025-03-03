@@ -265,7 +265,7 @@ jobs:
         uses: actions/github-script@v4
         with:
           script: |
-            const github = require('@actions/github');
+            const { github } = require('@actions/github');
             const fs = require('fs');
             const lintResults = fs.readFileSync('${{ github.workspace }}/megalinter-report/linters_logs/ERROR-KOTLIN_KTLINT.log', 'utf8');
             github.issues.createComment({
@@ -279,7 +279,7 @@ jobs:
         uses: actions/github-script@v4
         with:
           script: |
-            const github = require('@actions/github');
+            const { github } = require('@actions/github');
             const fs = require('fs');
             const lintResults = fs.readFileSync('${{ github.workspace }}/megalinter-report/linters_logs/ERROR-KOTLIN_KTLINT.log', 'utf8');
             if (!lintResults.trim()) {
