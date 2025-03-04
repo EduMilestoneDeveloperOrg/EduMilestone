@@ -355,6 +355,11 @@ jobs:
           echo "merge_ready=false" >> $GITHUB_OUTPUT
           exit 1
   
+      - name: ✅ Set Output for Merge Readiness
+        id: verify_merge_queue
+        run: |
+          echo "merge_ready=${{ env.merge_ready }}" >> $GITHUB_OUTPUT  # ✅ Correctly passing output
+  
       - name: 📢 🚦 Send Final Success Status to GitHub API
         if: env.merge_ready == 'true'  # ✅ Only send success status if PR is in the merge queue
         run: |
