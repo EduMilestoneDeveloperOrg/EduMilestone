@@ -295,8 +295,9 @@ jobs:
 
   # 📡 🔍 Merge Queue Check: Runs AFTER merge_check, verifies merge status, and sends final GitHub API status
   merge_queue_check:
-    name: 📡 Merge Queue Check (Verify Readiness)
+    name: 📡 Merge Queue Check (Verify Merge Readiness)
     runs-on: ubuntu-latest
+    needs: [merge_check]
     steps:
       - name: 📥 Fetch PR from Merge Queue with Retry
         run: |
