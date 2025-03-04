@@ -251,9 +251,9 @@ jobs:
             exit 1
           fi  # Added fi to properly close the if statement
 
-  # 📡 🔍 Merge Queue Check: Identify PRs in the queue for merging
-  merge_queue_check:
-    name: 📡 Merge Queue Check (Identify Pending PRs)
+  # ✅ 🔎 Final Merge Check: Ensures PR meets all conditions before merging
+  merge_check:
+    name: ✅ Final Merge Check (All Jobs Status)
     runs-on: ubuntu-latest
     needs:
       - pr_restriction
@@ -261,36 +261,12 @@ jobs:
       - enforce_pr_files_limit
       - security_scan
       - dependency_scan  # Ensures all essential PR checks complete before processing
-
-    steps:
-      - name: 🛠️ Fetch PRs in Merge Queue
-        id: fetch_merge_queue
-        run: |
-          echo "🔍 Fetching PRs in merge queue..."
-          PENDING_PRS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls?state=open&sort=created&direction=asc" \
-            | jq '[.[] | {number: .number, sha: .head.sha}]')
-
-          echo "📌 Merge Queue: $PENDING_PRS"
-          echo "pending_prs=$PENDING_PRS" >> $GITHUB_ENV
-
-  # ✅ 🔎 Final Merge Check: Ensure PR meets all conditions before merging
-  merge_check:
-    name: ✅ Final Merge Check (All Jobs Status)
-    runs-on: ubuntu-latest
-    needs:
-      - merge_queue_check  # Only runs if Merge Queue Check succeeds
-      - pr_restriction
-      - enforce_pr_description
-      - enforce_pr_files_limit
-      - security_scan
-      - dependency_scan
     outputs:
-      merge_status: ${{ steps.verify_status.outputs.merge_status }}  # 🔄 Correct output usage
+      merge_status: ${{ steps.verify_status.outputs.merge_status }}  # Pass status to next job
 
     steps:
       - name: 🔬 Verify Job Status Before Merging
-        id: verify_status  # ✅ Correctly assign an ID to use `outputs`
+        id: verify_status
         run: |
           echo "🔎 Checking all required job statuses..."
           if [[ "${{ needs.pr_restriction.result }}" == "failure" ]] || 
@@ -299,12 +275,12 @@ jobs:
              [[ "${{ needs.security_scan.result }}" == "failure" ]] || 
              [[ "${{ needs.dependency_scan.result }}" == "failure" ]]; then
             echo "❌ One or more jobs failed. Blocking merge."
-            echo "merge_status=false" >> $GITHUB_OUTPUT  # ✅ Use output instead of env
+            echo "merge_status=false" >> $GITHUB_OUTPUT
             exit 1
           fi
           
           echo "✅ All jobs passed! Merge allowed."
-          echo "merge_status=true" >> $GITHUB_OUTPUT  # ✅ Use output instead of env
+          echo "merge_status=true" >> $GITHUB_OUTPUT
 
       - name: 📢 🚦 Update CI/CD Status on GitHub
         run: |
@@ -320,12 +296,38 @@ jobs:
             exit 1
           fi
 
-  # 🔄 🚀 Automated Merge (Rebase): Automatically merge PRs that pass checks
+  # 📡 🔍 Merge Queue Check: Runs AFTER merge_check, verifies merge status, and sends final GitHub API status
+  merge_queue_check:
+    name: 📡 Merge Queue Check (Verify Merge Readiness)
+    runs-on: ubuntu-latest
+    needs: [merge_check]
+    if: needs.merge_check.outputs.merge_status == 'true'  # Run only if merge_check passed
+
+    steps:
+      - name: 📥 Fetch Pending PRs in Merge Queue
+        id: fetch_merge_queue
+        run: |
+          echo "🔍 Fetching PRs in merge queue..."
+          PENDING_PRS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls?state=open&sort=created&direction=asc" \
+            | jq '[.[] | {number: .number, sha: .head.sha}]')
+
+          echo "📌 Merge Queue: $PENDING_PRS"
+          echo "pending_prs=$PENDING_PRS" >> $GITHUB_ENV
+
+      - name: 📢 🚦 Send Final Success Status to GitHub API
+        run: |
+          echo "🔄 Sending final CI/CD success status..."
+          curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -d '{"state": "success", "context": "ci/cd", "description": "Final merge validation passed.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+
+  # 🔄 🚀 Automated Merge (Rebase): Runs only if merge_queue_check confirms readiness
   auto_merge:
     name: 🔄 🚀 Auto Merge PR (Rebase)
     runs-on: ubuntu-latest
-    needs: [merge_check]
-    if: needs.merge_check.outputs.merge_status == 'true'  # ✅ Correct way to check status from `outputs`
+    needs: [merge_queue_check]
+    if: success()  # Ensures that merge_queue_check passed successfully
 
     steps:
       - name: 🔄 🔃 Perform Rebase & Merge
