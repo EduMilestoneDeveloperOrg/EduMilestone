@@ -284,15 +284,15 @@ jobs:
 
       - name: 📢 🚦 Update CI/CD Status on GitHub
         run: |
-          echo "🔄 Updating CI/CD Status..."
+          echo "🔄 Updating Final Merge Allow Status..."
           if [[ "${{ steps.verify_status.outputs.merge_status }}" == "true" ]]; then
             curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
               -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              -d '{"state": "success", "context": "ci/cd", "description": "All checks passed successfully.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+              -d '{"state": "success", "context": "Final Merge Allow", "description": "All checks passed successfully.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
           else
             curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
               -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              -d '{"state": "failure", "context": "ci/cd", "description": "Merge blocked due to job failure.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+              -d '{"state": "failure", "context": "Final Merge Allow", "description": "Merge blocked due to job failure.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
             exit 1
           fi
 
@@ -334,10 +334,10 @@ jobs:
       - name: 📢 🚦 Send Final Success Status to GitHub API
         if: env.merge_ready == 'true'  # ✅ Only send success status if PR is in the merge queue
         run: |
-          echo "🔄 Sending final CI/CD success status to GitHub API..."
+          echo "🔄 Sending final Final Merge Allow success status to GitHub API..."
           curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -d '{"state": "success", "context": "ci/cd", "description": "Final merge validation passed.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+            -d '{"state": "success", "context": "Final Merge Allow", "description": "Final merge validation passed.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
 
   # 🔄 🚀 Automated Merge (Rebase): Runs only if merge_queue_check confirms readiness
   auto_merge:
