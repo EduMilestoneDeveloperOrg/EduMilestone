@@ -8,25 +8,47 @@ jobs:
   auto_merge:
     name: 🔄 🚀 Auto Merge PR (Squash & Merge)
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+      - name: 🛠️ Debug: Print Environment Variables
+        run: |
+          echo "🔍 GitHub Event Name: ${{ github.event_name }}"
+          echo "🔍 PR Number: ${{ github.event.pull_request.number }}"
+          echo "🔍 Merge SHA: ${{ github.sha }}"
 
       - name: 🔍 Checking Merge Queue Readiness
         run: |
           echo "🔍 Checking if PR is ready for merge queue..."
           PR_NUMBER="${{ github.event.pull_request.number }}"
-          MERGE_QUEUE_STATE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER" \
-            | jq -r '.mergeable_state')
+          MAX_ATTEMPTS=5
+          ATTEMPT=1
+          SLEEP_INTERVAL=120  # 2 minutes
 
-          echo "🔍 PR Merge Queue State: $MERGE_QUEUE_STATE"
+          while [[ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]]; do
+            echo "🔄 Checking PR mergeability (Attempt $ATTEMPT)..."
+            
+            # Fetch PR merge state
+            MERGE_QUEUE_STATE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER" \
+              | jq -r '.mergeable_state')
 
-          if [[ "$MERGE_QUEUE_STATE" == "clean" ]]; then
-            echo "✅ PR is mergeable and ready for merging."
-          else
-            echo "❌ PR is not mergeable. Exiting."
+            echo "🔍 PR Merge Queue State: $MERGE_QUEUE_STATE"
+
+            if [[ "$MERGE_QUEUE_STATE" == "clean" ]]; then
+              echo "✅ PR is mergeable and ready for merging."
+              break
+            elif [[ "$MERGE_QUEUE_STATE" == "dirty" ]]; then
+              echo "❌ PR has merge conflicts. Merge will not proceed."
+              exit 1
+            elif [[ "$MERGE_QUEUE_STATE" == "unstable" ]]; then
+              echo "⏳ PR is still 'unstable'. Retrying in $SLEEP_INTERVAL seconds..."
+              sleep $SLEEP_INTERVAL
+            fi
+
+            ATTEMPT=$((ATTEMPT + 1))
+          done
+
+          if [[ "$ATTEMPT" -gt "$MAX_ATTEMPTS" ]]; then
+            echo "❌ PR remained 'unstable' after multiple attempts. Skipping merge."
             exit 1
           fi
 
@@ -34,6 +56,15 @@ jobs:
         run: |
           echo "✅ PR is confirmed in the merge queue. Proceeding with squash & merge..."
           PR_NUMBER="${{ github.event.pull_request.number }}"
-          curl -X PUT "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER/merge" \
+          RESPONSE=$(curl -s -o response.json -w "%{http_code}" -X PUT \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER/merge" \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -d '{"commit_title": "🔄 Auto-merged by CI", "merge_method": "squash"}'
+            -d '{"commit_title": "🔄 Auto-merged by CI", "merge_method": "squash"}')
+
+          if [[ "$RESPONSE" -ne 200 ]]; then
+            echo "❌ Merge request failed! Response:"
+            cat response.json
+            exit 1
+          fi
+
+          echo "✅ Auto Merge completed successfully."
