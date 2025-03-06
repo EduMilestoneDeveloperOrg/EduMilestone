@@ -1,0 +1,39 @@
+name: 🔄 🚀 Auto Merge (Merge Queue)
+
+on:
+  workflow_dispatch:
+  merge_group:  # ✅ Ensures GitHub triggers this when PRs enter the merge queue
+
+jobs:
+  auto_merge:
+    name: 🔄 🚀 Auto Merge PR (Squash & Merge)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: 🔍 Checking Merge Queue Readiness
+        run: |
+          echo "🔍 Checking if PR is ready for merge queue..."
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          MERGE_QUEUE_STATE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER" \
+            | jq -r '.mergeable_state')
+
+          echo "🔍 PR Merge Queue State: $MERGE_QUEUE_STATE"
+
+          if [[ "$MERGE_QUEUE_STATE" == "clean" ]]; then
+            echo "✅ PR is mergeable and ready for merging."
+          else
+            echo "❌ PR is not mergeable. Exiting."
+            exit 1
+          fi
+
+      - name: 🔄 Squash & Merge PR
+        run: |
+          echo "✅ PR is confirmed in the merge queue. Proceeding with squash & merge..."
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          curl -X PUT "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER/merge" \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -d '{"commit_title": "🔄 Auto-merged by CI", "merge_method": "squash"}'
