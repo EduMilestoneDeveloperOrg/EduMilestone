@@ -294,9 +294,8 @@ jobs:
               -d '{"state": "failure", "context": "Final Merge Allow", "description": "Merge blocked due to job failure.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
             exit 1
           fi
-  
 
-
-      - name: 🚀 Trigger Auto Merge Workflow
-        if: steps.verify_status.outputs.merge_status == 'true'
-        uses: ./.github/workflows/auto_merge.yml
+  auto_merge_call:
+    name: 🚀 Trigger Auto Merge Workflow
+    needs: [merge_check]
+    uses: ./.github/workflows/auto_merge.yml   
