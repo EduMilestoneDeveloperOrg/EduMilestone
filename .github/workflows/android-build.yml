@@ -299,12 +299,12 @@ jobs:
         if: steps.verify_status.outputs.merge_status == 'true'
         run: |
           echo "✅ All checks passed. Triggering auto_merge workflow..."
-          
+      
           WORKFLOW_NAME="auto_merge"  # Use workflow name instead of `auto_merge.yml`
           REF="${{ github.event.pull_request.head.ref }}"  # Use PR source branch
       
           RESPONSE=$(curl -s -o response.json -w "%{http_code}" -X POST \
-            "https://api.github.com/repos/EduMilestoneDeveloperOrg/EduMilestone/actions/workflows/$WORKFLOW_NAME/dispatches" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/$WORKFLOW_NAME/dispatches" \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
             -d "{\"ref\":\"$REF\"}")
