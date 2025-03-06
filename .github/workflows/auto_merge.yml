@@ -1,7 +1,7 @@
 name: 📡 Merge Queue Check (Ensure Merge Readiness)
 
 on:
-  merge_group:  # ✅ Triggers when a PR is added to the merge queue
+  merge_group:  # ✅ Triggers when a PR enters the merge queue
   workflow_call:  # ✅ Allows this workflow to be called from another workflow
 
 jobs:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🛠️ Debug- Print Environment Variables
+      - name: 🛠️ Debug - Print Environment Variables
         run: |
           echo "🔍 GitHub Event Name: ${{ github.event_name }}"
           echo "🔍 PR Number: ${{ github.event.pull_request.number }}"
@@ -21,6 +21,12 @@ jobs:
         run: |
           echo "🔍 Checking if PR is in the merge queue..."
           PR_NUMBER="${{ github.event.pull_request.number }}"
+
+          if [[ -z "$PR_NUMBER" ]]; then
+            echo "❌ PR_NUMBER is empty. Exiting."
+            exit 1
+          fi
+
           MAX_ATTEMPTS=5
           ATTEMPT=1
           SLEEP_INTERVAL=120  # 2 minutes
@@ -51,16 +57,22 @@ jobs:
               # ✅ Send temporary success status to GitHub API
               curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
                 -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                -d '{"state": "success", "context": "Merge Queue Check", "description": "Waiting for merge, retrying...", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+                -d '{"state": "success", "context": "Final Merge Allow", "description": "Merge validation pending, retrying...", "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
 
               echo "⏳ Waiting for $SLEEP_INTERVAL seconds before retrying..."
               sleep $SLEEP_INTERVAL
+            elif [[ "$MERGE_QUEUE_STATE" == "null" ]]; then
+              echo "⚠️ PR Merge Queue State is 'null'. Possible API delay, retrying..."
+              sleep $SLEEP_INTERVAL
+            else
+              echo "❌ Unexpected PR state: $MERGE_QUEUE_STATE. Exiting."
+              exit 1
             fi
 
             ATTEMPT=$((ATTEMPT + 1))
           done
 
-          echo "❌ PR remained 'unstable' after multiple attempts. Skipping merge."
+          echo "❌ PR remained 'unstable' or returned 'null' after multiple attempts. Skipping merge."
           echo "merge_ready=false" >> $GITHUB_ENV
           echo "merge_ready=false" >> $GITHUB_OUTPUT
           exit 1
@@ -71,4 +83,4 @@ jobs:
           echo "🔄 Sending final success status for merge..."
           curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -d '{"state": "success", "context": "Final Merge Allow", "description": "Final merge validation passed.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+            -d '{"state": "success", "context": "Final Merge Allow", "description": "Final merge validation passed.", "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
