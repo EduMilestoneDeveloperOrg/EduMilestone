@@ -262,29 +262,25 @@ jobs:
       - dependency_scan
     outputs:
       merge_status: ${{ steps.verify_status.outputs.merge_status }}  # ✅ Pass status to auto_merge
-
+  
     steps:
       - name: 🔬 Verify Job Status Before Merging
         id: verify_status
         run: |
           echo "🔎 Checking all required job statuses..."
-          SUCCESS=true
-          for job in pr_restriction enforce_pr_description enforce_pr_files_limit security_scan dependency_scan; do
-            if [[ "${{ needs.$job.result }}" == "failure" ]]; then
-              SUCCESS=false
-              break
-            fi
-          done
-          
-          if [[ "$SUCCESS" == true ]]; then
-            echo "✅ All jobs passed! Merge allowed."
-            echo "merge_status=true" >> $GITHUB_OUTPUT
-          else
+          if [[ "${{ needs.pr_restriction.result }}" == "failure" ]] || 
+             [[ "${{ needs.enforce_pr_description.result }}" == "failure" ]] || 
+             [[ "${{ needs.enforce_pr_files_limit.result }}" == "failure" ]] || 
+             [[ "${{ needs.security_scan.result }}" == "failure" ]] || 
+             [[ "${{ needs.dependency_scan.result }}" == "failure" ]]; then
             echo "❌ One or more jobs failed. Blocking merge."
             echo "merge_status=false" >> $GITHUB_OUTPUT
             exit 1
           fi
-
+          
+          echo "✅ All jobs passed! Merge allowed."
+          echo "merge_status=true" >> $GITHUB_OUTPUT
+  
       - name: 📢 🚦 Update CI/CD Status on GitHub
         run: |
           echo "🔄 Updating Final Merge Allow Status..."
@@ -298,12 +294,12 @@ jobs:
               -d '{"state": "failure", "context": "Final Merge Allow", "description": "Merge blocked due to job failure.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
             exit 1
           fi
-
+  
       - name: 🚀 Trigger Auto Merge Workflow
         if: steps.verify_status.outputs.merge_status == 'true'
         run: |
           echo "✅ All checks passed. Triggering auto_merge workflow..."
           curl -X POST "https://api.github.com/repos/${{ github.repository }}/actions/workflows/auto_merge.yml/dispatches" \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.everest-preview+json" \
+            -H "Accept: application/vnd.github.v3+json" \
             -d '{"ref":"${{ github.ref }}"}'
