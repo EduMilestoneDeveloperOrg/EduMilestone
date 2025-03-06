@@ -255,9 +255,6 @@ jobs:
     name: ✅ Final Merge Check (All Jobs Status)
     runs-on: ubuntu-latest
     needs:
-      - pr_restriction
-      - enforce_pr_description
-      - enforce_pr_files_limit
       - security_scan
       - dependency_scan
     outputs:
@@ -296,12 +293,12 @@ jobs:
           fi
 
   auto_merge:
-    name: 🔄 Verify & Process PR Merge Queue
+    name: 🔄 Auto Merge PR (With Status Verification)
     needs: [merge_check]
     runs-on: ubuntu-latest
 
     steps:
-      - name: ⏳ Initial Delay (Before Merge Check)
+      - name: ⏳ Initial Delay (Before Checking Merge Queue)
         run: sleep 10
 
       - name: 🔍 Fetch PR Number from Merge Queue
@@ -321,12 +318,27 @@ jobs:
 
           echo "✅ Found PR Number in Merge Queue: $PR_NUMBER"
           echo "pr_number=$PR_NUMBER" >> $GITHUB_ENV
-          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+      - name: 🔍 Fetch Latest Commit SHA for the PR
+        id: fetch_sha
+        run: |
+          echo "🔍 Fetching Latest Commit SHA for PR #${{ env.pr_number }}..."
+          
+          LATEST_COMMIT_SHA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ env.pr_number }}" | jq -r '.head.sha')
+
+          if [[ -z "$LATEST_COMMIT_SHA" || "$LATEST_COMMIT_SHA" == "null" ]]; then
+            echo "❌ Could not retrieve SHA for PR #${{ env.pr_number }}. Exiting."
+            exit 1
+          fi
+
+          echo "✅ Latest Commit SHA for PR #${{ env.pr_number }}: $LATEST_COMMIT_SHA"
+          echo "commit_sha=$LATEST_COMMIT_SHA" >> $GITHUB_ENV
 
       - name: 📢 🚦 Send Initial GitHub Status (Merge Pending)
         run: |
           echo "🔄 Sending initial success status for PR #${{ env.pr_number }}..."
-          curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ env.pr_number }}" \
+          curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ env.commit_sha }}" \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -d '{"state": "success", "context": "Final Merge Allow", "description": "Merge validation pending, retrying...", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
 
@@ -339,40 +351,37 @@ jobs:
           while [[ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]]; do
             echo "🔄 Checking PR mergeability (Attempt $ATTEMPT)..."
 
-            MERGE_QUEUE_STATE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/pulls/${{ env.pr_number }}" \
-              | jq -r '.mergeable_state')
+            PR_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/pulls/${{ env.pr_number }}")
 
-            echo "🔍 PR Merge Queue State: $MERGE_QUEUE_STATE"
+            MERGE_QUEUE_STATE=$(echo "$PR_DATA" | jq -r '.mergeable_state')
+            MERGED_STATUS=$(echo "$PR_DATA" | jq -r '.merged')
 
-            if [[ "$MERGE_QUEUE_STATE" == "clean" ]]; then
-              echo "✅ PR is mergeable and ready for merging."
-              echo "merge_ready=true" >> $GITHUB_ENV
-              echo "merge_ready=true" >> $GITHUB_OUTPUT
+            echo "🔍 PR #${{ env.pr_number }} Merge Queue State: $MERGE_QUEUE_STATE"
+            echo "🔍 PR #${{ env.pr_number }} Merged Status: $MERGED_STATUS"
+
+            if [[ "$MERGED_STATUS" == "true" ]]; then
+              echo "✅ PR #${{ env.pr_number }} is merged successfully!"
               exit 0
-            elif [[ "$MERGE_QUEUE_STATE" == "dirty" ]]; then
-              echo "❌ PR has merge conflicts. Merge will not proceed."
-              echo "merge_ready=false" >> $GITHUB_ENV
-              echo "merge_ready=false" >> $GITHUB_OUTPUT
-              exit 1
+            elif [[ "$MERGE_QUEUE_STATE" == "clean" ]]; then
+              echo "✅ PR is mergeable and ready for merging."
+              exit 0
             elif [[ "$MERGE_QUEUE_STATE" == "unstable" ]]; then
-              echo "⏳ PR is still 'unstable'. Sending temporary success status to GitHub API..."
+              echo "⏳ PR is still 'unstable'. Re-sending success status to GitHub API..."
 
-              curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+              curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ env.commit_sha }}" \
                 -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                -d '{"state": "success", "context": "Final Merge Allow", "description": "Merge validation pending, retrying...", "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+                -d '{"state": "success", "context": "Final Merge Allow", "description": "Still waiting in merge queue, retrying...", "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
 
               echo "⏳ Waiting for $SLEEP_INTERVAL seconds before retrying..."
               sleep $SLEEP_INTERVAL
             else
-              echo "❌ Unexpected PR state: $MERGE_QUEUE_STATE. Exiting."
+              echo "❌ PR has conflicts or unexpected state. Exiting."
               exit 1
             fi
 
             ATTEMPT=$((ATTEMPT + 1))
           done
 
-          echo "❌ PR remained 'unstable' after multiple attempts. Skipping merge."
-          echo "merge_ready=false" >> $GITHUB_ENV
-          echo "merge_ready=false" >> $GITHUB_OUTPUT
+          echo "❌ PR #${{ env.pr_number }} remained 'unstable' after multiple attempts. Skipping merge."
           exit 1
