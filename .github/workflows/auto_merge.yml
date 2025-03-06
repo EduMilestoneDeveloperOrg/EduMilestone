@@ -1,8 +1,16 @@
 name: 🔄 🚀 Auto Merge (Merge Queue)
 
 on:
-  workflow_dispatch:
-  merge_group:  # ✅ Ensures GitHub triggers this when PRs enter the merge queue
+  workflow_dispatch:  # Manually triggered workflow
+  merge_group:  # Trigger when PRs enter the merge queue
+  push:  # Exclude push events
+    paths-ignore:
+      - '**'
+  pull_request:
+    types:
+      - opened  # Exclude new pull request events
+    paths-ignore:
+      - '**'
 
 jobs:
   auto_merge:
