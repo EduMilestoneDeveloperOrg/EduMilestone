@@ -298,4 +298,4 @@ jobs:
   auto_merge_call:
     name: 🚀 Trigger Auto Merge Workflow
     needs: [merge_check]
-    uses: ./.github/workflows/auto_merge.yml   
+    uses: ./.github/workflows/auto_merge.yml
