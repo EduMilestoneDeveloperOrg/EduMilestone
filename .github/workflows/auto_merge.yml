@@ -1,7 +1,7 @@
 name: 🔄 🚀 Auto Merge PR (Squash & Merge)
 
 on:
-  workflow_dispatch:  # Manually triggered workflow
+  workflow_call:  # ✅ This makes it a reusable workflow
   merge_group:  # Trigger when PRs enter the merge queue
   push:  # Exclude push events
     paths-ignore:
