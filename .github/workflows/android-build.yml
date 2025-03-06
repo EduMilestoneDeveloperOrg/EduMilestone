@@ -299,7 +299,17 @@ jobs:
         if: steps.verify_status.outputs.merge_status == 'true'
         run: |
           echo "✅ All checks passed. Triggering auto_merge workflow..."
-          curl -X POST "https://api.github.com/repos/${{ github.repository }}/actions/workflows/auto_merge.yml/dispatches" \
+          RESPONSE=$(curl -s -o response.json -w "%{http_code}" -X POST \
+            "https://api.github.com/repos/EduMilestoneDeveloperOrg/EduMilestone/actions/workflows/auto_merge.yml/dispatches" \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            -d '{"ref":"${{ github.ref }}"}'
+            -d '{"ref":"${{ github.ref }}"}')
+      
+          # Read the HTTP status code from the response
+          if [[ "$RESPONSE" -ne 204 ]]; then
+            echo "❌ API request failed! Response:"
+            cat response.json
+            exit 1  # Fail the workflow if the API call fails
+          fi
+      
+          echo "✅ Auto Merge workflow triggered successfully."
