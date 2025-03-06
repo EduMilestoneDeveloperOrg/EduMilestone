@@ -260,26 +260,50 @@ jobs:
       - enforce_pr_files_limit
       - security_scan
       - dependency_scan
+    outputs:
+      merge_status: ${{ steps.verify_status.outputs.merge_status }}  # ✅ Pass status to auto_merge
+
     steps:
-      - name: Report Final Status to GitHub API
+      - name: 🔬 Verify Job Status Before Merging
+        id: verify_status
         run: |
-          # Determine the overall status of all jobs
+          echo "🔎 Checking all required job statuses..."
           SUCCESS=true
           for job in pr_restriction enforce_pr_description enforce_pr_files_limit security_scan dependency_scan; do
-            if [[ "${{ job.status }}" == "failure" ]]; then
+            if [[ "${{ needs.$job.result }}" == "failure" ]]; then
               SUCCESS=false
               break
             fi
           done
-          if [ "$SUCCESS" == true ]; then
-            echo "✅ All jobs passed. Reporting success."
-            curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
-              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              -d '{"state": "success", "context": "ci/cd", "description": "All checks passed.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+          
+          if [[ "$SUCCESS" == true ]]; then
+            echo "✅ All jobs passed! Merge allowed."
+            echo "merge_status=true" >> $GITHUB_OUTPUT
           else
-            echo "❌ One or more jobs failed. Reporting failure."
-            curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
-              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              -d '{"state": "failure", "context": "ci/cd", "description": "One or more checks failed.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+            echo "❌ One or more jobs failed. Blocking merge."
+            echo "merge_status=false" >> $GITHUB_OUTPUT
             exit 1
           fi
+
+      - name: 📢 🚦 Update CI/CD Status on GitHub
+        run: |
+          echo "🔄 Updating Final Merge Allow Status..."
+          if [[ "${{ steps.verify_status.outputs.merge_status }}" == "true" ]]; then
+            curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -d '{"state": "success", "context": "Final Merge Allow", "description": "All checks passed successfully.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+          else
+            curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -d '{"state": "failure", "context": "Final Merge Allow", "description": "Merge blocked due to job failure.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+            exit 1
+          fi
+
+      - name: 🚀 Trigger Auto Merge Workflow
+        if: steps.verify_status.outputs.merge_status == 'true'
+        run: |
+          echo "✅ All checks passed. Triggering auto_merge workflow..."
+          curl -X POST "https://api.github.com/repos/${{ github.repository }}/actions/workflows/auto_merge.yml/dispatches" \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.everest-preview+json" \
+            -d '{"ref":"${{ github.ref }}"}'
