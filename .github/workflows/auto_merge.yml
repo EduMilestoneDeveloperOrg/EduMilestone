@@ -44,11 +44,17 @@ jobs:
 
             MERGE_QUEUE_STATE=$(echo "$PR_DATA" | jq -r '.mergeable_state')
             MERGED_STATUS=$(echo "$PR_DATA" | jq -r '.merged')
-            IN_MERGE_QUEUE=$(echo "$PR_DATA" | jq -r '.merge_queue_entry')
+
+            # Handle possible API delay for mergeable_state
+            if [[ "$MERGE_QUEUE_STATE" == "unknown" ]]; then
+              echo "⚠️ GitHub API returned 'unknown' for mergeable_state. Retrying..."
+              sleep $SLEEP_INTERVAL
+              ATTEMPT=$((ATTEMPT + 1))
+              continue
+            fi
 
             echo "🔍 PR #${{ inputs.pr_number }} Merge Queue State: $MERGE_QUEUE_STATE"
             echo "🔍 PR #${{ inputs.pr_number }} Merged Status: $MERGED_STATUS"
-            echo "🔍 PR #${{ inputs.pr_number }} Merge Queue Entry: $IN_MERGE_QUEUE"
 
             if [[ "$MERGED_STATUS" == "true" ]]; then
               echo "✅ PR #${{ inputs.pr_number }} is merged successfully!"
@@ -56,7 +62,13 @@ jobs:
             elif [[ "$MERGE_QUEUE_STATE" == "clean" ]]; then
               echo "✅ PR is mergeable and ready for merging."
               exit 0
-            elif [[ "$IN_MERGE_QUEUE" != "null" ]]; then
+            fi
+
+            # Only update GitHub status if PR is in merge queue
+            IN_MERGE_QUEUE=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB }}" \
+              "https://api.github.com/repos/${{ github.repository }}/pulls/${{ inputs.pr_number }}/merge_queue_entry" | jq -r '.id // empty')
+
+            if [[ -n "$IN_MERGE_QUEUE" ]]; then
               echo "⏳ PR is in the merge queue. Re-sending success status to GitHub API..."
 
               curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ inputs.commit_sha }}" \
@@ -73,5 +85,5 @@ jobs:
             ATTEMPT=$((ATTEMPT + 1))
           done
 
-          echo "❌ PR #${{ inputs.pr_number }} remained in queue without merging. Skipping merge."
+          echo "❌ PR did not merge within the expected time. Manual intervention required."
           exit 1
