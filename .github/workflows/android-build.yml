@@ -298,13 +298,13 @@ jobs:
     needs: [merge_check]
     steps:
       - name: ⏳ Wait for PR to enter merge queue
-        run: sleep 60  # Increased to 1 minute
+        run: sleep 60  # Increased to 1 minute for stability
 
       - name: 🔍 Get Latest PR Number and Commit SHA
         id: get-pr-info
         run: |
           echo "🔍 Fetching latest open PR..."
-          PR_DATA=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB }}" \
+          PR_DATA=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB || secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/${{ github.repository }}/pulls?state=open&sort=updated&direction=desc" | jq '.[0]')
   
           PR_NUMBER=$(echo "$PR_DATA" | jq -r '.number')
@@ -324,22 +324,34 @@ jobs:
       - name: 🚦 Check PR Mergeability Before Triggering Auto Merge
         run: |
           echo "🔍 Checking PR mergeability..."
-          PR_MERGEABLE_STATE=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB }}" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ env.pr_number }}" | jq -r '.mergeable_state')
+          MAX_RETRIES=3
+          RETRY=0
 
-          echo "Mergeable State: $PR_MERGEABLE_STATE"
+          while [[ "$RETRY" -lt "$MAX_RETRIES" ]]; do
+            PR_MERGEABLE_STATE=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB || secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/pulls/${{ env.pr_number }}" | jq -r '.mergeable_state')
 
-          if [[ "$PR_MERGEABLE_STATE" != "clean" ]]; then
-            echo "⚠️ PR is not in a 'clean' state for merging. Skipping auto-merge."
-            exit 1
-          fi
+            echo "🔍 Mergeable State: $PR_MERGEABLE_STATE"
+
+            if [[ "$PR_MERGEABLE_STATE" == "clean" ]]; then
+              echo "✅ PR is in a 'clean' state and ready for merging."
+              exit 0
+            fi
+
+            echo "⚠️ PR is not mergeable yet. Retrying in 30s..."
+            sleep 30
+            RETRY=$((RETRY + 1))
+          done
+
+          echo "❌ PR is not in a 'clean' state for merging after retries. Skipping auto-merge."
+          exit 1
 
       - name: 🚀 Trigger Auto Merge Workflow
         run: |
           echo "🚀 Triggering Auto Merge Workflow for PR #${{ env.pr_number }}..."
           RESPONSE=$(curl -s -o response.json -w "%{http_code}" -X POST \
             "https://api.github.com/repos/${{ github.repository }}/actions/workflows/auto_merge.yml/dispatches" \
-            -H "Authorization: token ${{ secrets.PAT_GITHUB }}" \
+            -H "Authorization: token ${{ secrets.PAT_GITHUB || secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
             -d '{
               "ref": "master",
@@ -354,6 +366,6 @@ jobs:
           if [[ "$RESPONSE" -ne 204 ]]; then
             echo "❌ Failed to trigger auto_merge.yml workflow! Response: $HTTP_STATUS"
             exit 1
+          else
+            echo "✅ Auto Merge Workflow triggered successfully!"
           fi
-
-          echo "✅ Successfully triggered auto_merge.yml workflow."
