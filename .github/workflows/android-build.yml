@@ -299,31 +299,47 @@ jobs:
     steps:
       - name: ⏳ Wait for PR to enter merge queue
         run: sleep 20
-
+  
       - name: 🔍 Get Latest PR Number and Commit SHA
         id: get-pr-info
         run: |
+          echo "🔍 Fetching latest open PR..."
           PR_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/${{ github.repository }}/pulls?state=open&sort=updated&direction=desc" | jq '.[0]')
-
+  
           PR_NUMBER=$(echo "$PR_DATA" | jq -r '.number')
           COMMIT_SHA=$(echo "$PR_DATA" | jq -r '.head.sha')
-
+  
+          if [[ "$PR_NUMBER" == "null" || "$COMMIT_SHA" == "null" ]]; then
+            echo "❌ No open PRs found!"
+            exit 1
+          fi
+  
           echo "🔹 Found PR Number: $PR_NUMBER"
           echo "🔹 Found Commit SHA: $COMMIT_SHA"
-
+  
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_ENV"
           echo "commit_sha=$COMMIT_SHA" >> "$GITHUB_ENV"
-
+  
       - name: 🚀 Trigger Auto Merge Workflow
         run: |
-          curl -X POST "https://api.github.com/repos/${{ github.repository }}/actions/workflows/auto_merge.yml/dispatches" \
+          echo "🚀 Triggering Auto Merge Workflow for PR #${{ env.pr_number }}..."
+          RESPONSE=$(curl -s -o response.json -w "%{http_code}" -X POST \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/auto_merge.yml/dispatches" \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
             -d '{
-              "ref": "main",
+              "ref": "master",
               "inputs": {
                 "pr_number": "'"${{ env.pr_number }}"'",
                 "commit_sha": "'"${{ env.commit_sha }}"'"
               }
-            }'
+            }')
+  
+          if [[ "$RESPONSE" -ne 204 ]]; then
+            echo "❌ Failed to trigger auto_merge.yml workflow!"
+            cat response.json
+            exit 1
+          fi
+  
+          echo "✅ Successfully triggered auto_merge.yml workflow."
