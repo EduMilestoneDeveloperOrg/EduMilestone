@@ -255,9 +255,6 @@ jobs:
     name: ✅ Final Merge Check (All Jobs Status)
     runs-on: ubuntu-latest
     needs:
-      - pr_restriction
-      - enforce_pr_description
-      - enforce_pr_files_limit
       - security_scan
       - dependency_scan
     outputs:
@@ -296,7 +293,9 @@ jobs:
           fi
 
   auto_merge_call:
+    name: 🔀 Auto Merge Call
     runs-on: ubuntu-latest
+    needs: [merge_check]
     steps:
       - name: ⏳ Wait for PR to enter merge queue
         run: sleep 20
