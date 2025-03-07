@@ -296,6 +296,35 @@ jobs:
           fi
 
   auto_merge_call:
-    name: 🚀 Trigger Auto Merge Workflow
-    needs: [merge_check]
-    uses: ./.github/workflows/auto_merge.yml
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⏳ Wait for PR to enter merge queue
+        run: sleep 20
+
+      - name: 🔍 Get Latest PR Number and Commit SHA
+        id: get-pr-info
+        run: |
+          PR_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls?state=open&sort=updated&direction=desc" | jq '.[0]')
+
+          PR_NUMBER=$(echo "$PR_DATA" | jq -r '.number')
+          COMMIT_SHA=$(echo "$PR_DATA" | jq -r '.head.sha')
+
+          echo "🔹 Found PR Number: $PR_NUMBER"
+          echo "🔹 Found Commit SHA: $COMMIT_SHA"
+
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_ENV"
+          echo "commit_sha=$COMMIT_SHA" >> "$GITHUB_ENV"
+
+      - name: 🚀 Trigger Auto Merge Workflow
+        run: |
+          curl -X POST "https://api.github.com/repos/${{ github.repository }}/actions/workflows/auto_merge.yml/dispatches" \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -d '{
+              "ref": "main",
+              "inputs": {
+                "pr_number": "'"${{ env.pr_number }}"'",
+                "commit_sha": "'"${{ env.commit_sha }}"'"
+              }
+            }'
