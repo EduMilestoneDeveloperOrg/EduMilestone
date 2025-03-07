@@ -298,19 +298,19 @@ jobs:
     needs: [merge_check]
     steps:
       - name: ⏳ Wait for PR to enter merge queue
-        run: sleep 20
-  
+        run: sleep 60  # Increased to 1 minute
+
       - name: 🔍 Get Latest PR Number and Commit SHA
         id: get-pr-info
         run: |
           echo "🔍 Fetching latest open PR..."
-          PR_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          PR_DATA=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB }}" \
             "https://api.github.com/repos/${{ github.repository }}/pulls?state=open&sort=updated&direction=desc" | jq '.[0]')
   
           PR_NUMBER=$(echo "$PR_DATA" | jq -r '.number')
           COMMIT_SHA=$(echo "$PR_DATA" | jq -r '.head.sha')
   
-          if [[ "$PR_NUMBER" == "null" || "$COMMIT_SHA" == "null" ]]; then
+          if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" || -z "$COMMIT_SHA" || "$COMMIT_SHA" == "null" ]]; then
             echo "❌ No open PRs found!"
             exit 1
           fi
@@ -320,13 +320,26 @@ jobs:
   
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_ENV"
           echo "commit_sha=$COMMIT_SHA" >> "$GITHUB_ENV"
-  
+
+      - name: 🚦 Check PR Mergeability Before Triggering Auto Merge
+        run: |
+          echo "🔍 Checking PR mergeability..."
+          PR_MERGEABLE_STATE=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB }}" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ env.pr_number }}" | jq -r '.mergeable_state')
+
+          echo "Mergeable State: $PR_MERGEABLE_STATE"
+
+          if [[ "$PR_MERGEABLE_STATE" != "clean" ]]; then
+            echo "⚠️ PR is not in a 'clean' state for merging. Skipping auto-merge."
+            exit 1
+          fi
+
       - name: 🚀 Trigger Auto Merge Workflow
         run: |
           echo "🚀 Triggering Auto Merge Workflow for PR #${{ env.pr_number }}..."
           RESPONSE=$(curl -s -o response.json -w "%{http_code}" -X POST \
             "https://api.github.com/repos/${{ github.repository }}/actions/workflows/auto_merge.yml/dispatches" \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Authorization: token ${{ secrets.PAT_GITHUB }}" \
             -H "Accept: application/vnd.github.v3+json" \
             -d '{
               "ref": "master",
@@ -335,11 +348,12 @@ jobs:
                 "commit_sha": "'"${{ env.commit_sha }}"'"
               }
             }')
-  
+
+          HTTP_STATUS=$(cat response.json)
+
           if [[ "$RESPONSE" -ne 204 ]]; then
-            echo "❌ Failed to trigger auto_merge.yml workflow!"
-            cat response.json
+            echo "❌ Failed to trigger auto_merge.yml workflow! Response: $HTTP_STATUS"
             exit 1
           fi
-  
+
           echo "✅ Successfully triggered auto_merge.yml workflow."
