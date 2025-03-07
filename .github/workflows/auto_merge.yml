@@ -30,11 +30,11 @@ jobs:
             -H "Authorization: token ${{ secrets.PAT_GITHUB }}" \
             -d '{"state": "success", "context": "Final Merge Allow", "description": "Merge validation pending, retrying...", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
 
-      - name: 🔄 Check PR Merge Status & Resend GitHub API Status if Needed
+      - name: 🔄 Check PR Merge Queue Status & Resend GitHub API Status if Needed
         run: |
           MAX_ATTEMPTS=5
           ATTEMPT=1
-          SLEEP_INTERVAL=120  # 2 minutes
+          SLEEP_INTERVAL=60  # 1 minute
 
           while [[ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]]; do
             echo "🔄 Checking PR mergeability (Attempt $ATTEMPT)..."
@@ -44,9 +44,11 @@ jobs:
 
             MERGE_QUEUE_STATE=$(echo "$PR_DATA" | jq -r '.mergeable_state')
             MERGED_STATUS=$(echo "$PR_DATA" | jq -r '.merged')
+            IN_MERGE_QUEUE=$(echo "$PR_DATA" | jq -r '.merge_queue_entry')
 
             echo "🔍 PR #${{ inputs.pr_number }} Merge Queue State: $MERGE_QUEUE_STATE"
             echo "🔍 PR #${{ inputs.pr_number }} Merged Status: $MERGED_STATUS"
+            echo "🔍 PR #${{ inputs.pr_number }} Merge Queue Entry: $IN_MERGE_QUEUE"
 
             if [[ "$MERGED_STATUS" == "true" ]]; then
               echo "✅ PR #${{ inputs.pr_number }} is merged successfully!"
@@ -54,8 +56,8 @@ jobs:
             elif [[ "$MERGE_QUEUE_STATE" == "clean" ]]; then
               echo "✅ PR is mergeable and ready for merging."
               exit 0
-            elif [[ "$MERGE_QUEUE_STATE" == "unstable" ]]; then
-              echo "⏳ PR is still 'unstable'. Re-sending success status to GitHub API..."
+            elif [[ "$IN_MERGE_QUEUE" != "null" ]]; then
+              echo "⏳ PR is in the merge queue. Re-sending success status to GitHub API..."
 
               curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ inputs.commit_sha }}" \
                 -H "Authorization: token ${{ secrets.PAT_GITHUB }}" \
@@ -64,15 +66,12 @@ jobs:
               echo "⏳ Waiting for $SLEEP_INTERVAL seconds before retrying..."
               sleep $SLEEP_INTERVAL
             else
-              echo "❌ PR has conflicts or unexpected state. Exiting."
+              echo "❌ PR is not in merge queue or has conflicts. Exiting."
               exit 1
             fi
 
             ATTEMPT=$((ATTEMPT + 1))
           done
 
-          echo "❌ PR #${{ inputs.pr_number }} remained 'unstable' after multiple attempts. Skipping merge."
+          echo "❌ PR #${{ inputs.pr_number }} remained in queue without merging. Skipping merge."
           exit 1
-          curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
-            -H "Authorization: token ${{ secrets.PAT_GITHUB }}" \
-            -d '{"state": "success", "context": "Final Merge Allow", "description": "PR successfully merged.", "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
