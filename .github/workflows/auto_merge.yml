@@ -6,7 +6,7 @@
 #✅ Sends GitHub API status update after successful merge
 #✅ Prevents unnecessary retries in the main workflow
 
-name: PR Merge Status Check
+name: Auto Merge
 on:
   workflow_dispatch:
     inputs:
@@ -27,7 +27,7 @@ jobs:
         run: |
           echo "🔄 Sending initial success status for PR #${{ inputs.pr_number }}..."
           curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ inputs.commit_sha }}" \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Authorization: token ${{ secrets.PAT_GITHUB }}" \
             -d '{"state": "success", "context": "Final Merge Allow", "description": "Merge validation pending, retrying...", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
 
       - name: 🔄 Check PR Merge Status & Resend GitHub API Status if Needed
@@ -39,7 +39,7 @@ jobs:
           while [[ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]]; do
             echo "🔄 Checking PR mergeability (Attempt $ATTEMPT)..."
 
-            PR_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            PR_DATA=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB }}" \
               "https://api.github.com/repos/${{ github.repository }}/pulls/${{ inputs.pr_number }}")
 
             MERGE_QUEUE_STATE=$(echo "$PR_DATA" | jq -r '.mergeable_state')
@@ -58,7 +58,7 @@ jobs:
               echo "⏳ PR is still 'unstable'. Re-sending success status to GitHub API..."
 
               curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ inputs.commit_sha }}" \
-                -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                -H "Authorization: token ${{ secrets.PAT_GITHUB }}" \
                 -d '{"state": "success", "context": "Final Merge Allow", "description": "Still waiting in merge queue, retrying...", "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
 
               echo "⏳ Waiting for $SLEEP_INTERVAL seconds before retrying..."
@@ -74,5 +74,5 @@ jobs:
           echo "❌ PR #${{ inputs.pr_number }} remained 'unstable' after multiple attempts. Skipping merge."
           exit 1
           curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Authorization: token ${{ secrets.PAT_GITHUB }}" \
             -d '{"state": "success", "context": "Final Merge Allow", "description": "PR successfully merged.", "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
