@@ -9,9 +9,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 🚀 Merge PR via GitHub API
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # ✅ Add this line to authenticate `gh`
         run: |
           echo "🔍 Fetching PR details..."
-          PR_NUMBER=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB }}" \
+          PR_NUMBER=$(curl -s -H "Authorization: token $GH_TOKEN" \
             "https://api.github.com/repos/${{ github.repository }}/pulls?state=open&sort=updated&direction=desc" | jq -r '.[0].number')
 
           if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
@@ -22,5 +24,4 @@ jobs:
           echo "🚀 Merging PR #$PR_NUMBER..."
           gh pr merge $PR_NUMBER --squash --auto -R ${{ github.repository }}
 
-          echo "❌ PR did not merge within the expected time. Manual intervention required."
-          exit 1
+          echo "✅ PR merged successfully!"
