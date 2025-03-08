@@ -321,7 +321,7 @@ jobs:
           echo "🔍 Fetching PR Number from Merge Queue..."
           
           MERGE_QUEUE_JSON=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls?state=open&sort=created&direction=asc")
+            "https://api.github.com/repos/${{ github.repository }}/pulls?state=open&sort=updated&direction=desc")
 
           PR_NUMBER=$(echo "$MERGE_QUEUE_JSON" | jq -r '.[0].number')
 
@@ -350,7 +350,8 @@ jobs:
 
             echo "🔍 PR Merge Queue State: $MERGE_QUEUE_STATE"
 
-            if [[ "$PR_MERGEABLE_STATE" == "clean" || "$PR_MERGEABLE_STATE" == "unstable" ]]; then
+            # ✅ FIX: Use correct variable MERGE_QUEUE_STATE
+            if [[ "$MERGE_QUEUE_STATE" == "clean" || "$MERGE_QUEUE_STATE" == "unstable" ]]; then
               echo "✅ PR is mergeable and ready for merging."
               echo "merge_ready=true" >> $GITHUB_ENV
               echo "merge_ready=true" >> $GITHUB_OUTPUT
