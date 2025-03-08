@@ -7,10 +7,6 @@ on:
     workflows: ["Android CI/CD Pipeline"]  # ✅ Waits for this workflow to complete
     types: 
       - completed
-# 🚀 Prevents multiple workflows from running simultaneously
-concurrency:
-  group: auto-merge-${{ github.actor }}
-  cancel-in-progress: true  # ✅ Cancels any in-progress workflow if a new one starts
   
 jobs:
   auto_merge:
