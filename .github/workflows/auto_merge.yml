@@ -1,101 +1,26 @@
-#✅ Adds a 10s delay before checking the merge queue
-#✅ Explicitly fetches PR number from the merge queue API
-#✅ Handles cases where the merge queue is empty
-#✅ Retries only if merge queue check fails, sending GitHub status on each retry
-#✅ Performs Squash & Merge if PR is ready
-#✅ Sends GitHub API status update after successful merge
-#✅ Prevents unnecessary retries in the main workflow
-
 name: Auto Merge
 on:
-  workflow_dispatch:
-    inputs:
-      pr_number:
-        description: 'Pull Request Number'
-        required: true
-        type: string
-      commit_sha:
-        description: 'Commit SHA'
-        required: true
-        type: string
+  merge_group:
+    branches:
+      - master  # Adjust for your main branch
 
 jobs:
-  check-merge-status:
+  merge_pr:
     runs-on: ubuntu-latest
     steps:
-      - name: 🕒 Initial Delay Before Checking Merge Queue
+      - name: 🚀 Merge PR via GitHub API
         run: |
-          echo "⏳ Waiting for 10 seconds before starting the merge check..."
-          sleep 10
+          echo "🔍 Fetching PR details..."
+          PR_NUMBER=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB }}" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls?state=open&sort=updated&direction=desc" | jq -r '.[0].number')
 
-      - name: 📢 🚦 Send Initial GitHub Status (Merge Pending)
-        run: |
-          echo "🔄 Sending initial success status for PR #${{ inputs.pr_number }}..."
-          RESPONSE=$(curl -s -w "\nHTTP_STATUS=%{http_code}" -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ inputs.commit_sha }}" \
-            -H "Authorization: token ${{ secrets.PAT_GITHUB }}" \
-            -d '{"state": "success", "context": "Final Merge Allow", "description": "Merge validation pending, retrying...", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}')
+          if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
+            echo "❌ No open PR found!"
+            exit 1
+          fi
 
-          echo "🔍 Full API Response: $RESPONSE"
-
-      - name: 🔄 Check PR Merge Queue Status & Resend GitHub API Status if Needed
-        run: |
-          MAX_ATTEMPTS=5
-          ATTEMPT=1
-          SLEEP_INTERVAL=60  # 1 minute
-
-          while [[ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]]; do
-            echo "🔄 Checking PR mergeability (Attempt $ATTEMPT)..."
-
-            PR_DATA=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB }}" \
-              "https://api.github.com/repos/${{ github.repository }}/pulls/${{ inputs.pr_number }}")
-
-            MERGE_QUEUE_STATE=$(echo "$PR_DATA" | jq -r '.mergeable_state')
-            MERGED_STATUS=$(echo "$PR_DATA" | jq -r '.merged')
-
-            # Debugging: Print full response for better visibility
-            echo "🔍 Full API Response for PR Data: $PR_DATA"
-
-            # Pre-check for unknown state to prevent unnecessary failures
-            if [[ "$MERGE_QUEUE_STATE" == "unknown" ]]; then
-              echo "⚠️ GitHub API returned 'unknown' for mergeable_state. Retrying..."
-              sleep $SLEEP_INTERVAL
-              ATTEMPT=$((ATTEMPT + 1))
-              continue
-            fi
-
-            echo "🔍 PR #${{ inputs.pr_number }} Merge Queue State: $MERGE_QUEUE_STATE"
-            echo "🔍 PR #${{ inputs.pr_number }} Merged Status: $MERGED_STATUS"
-
-            if [[ "$MERGED_STATUS" == "true" ]]; then
-              echo "✅ PR #${{ inputs.pr_number }} is merged successfully!"
-              exit 0
-            elif [[ "$MERGE_QUEUE_STATE" == "clean" ]]; then
-              echo "✅ PR is mergeable and ready for merging."
-              exit 0
-            fi
-
-            # Only update GitHub status if PR is in merge queue
-            IN_MERGE_QUEUE=$(curl -s -H "Authorization: token ${{ secrets.PAT_GITHUB }}" \
-              "https://api.github.com/repos/${{ github.repository }}/pulls/${{ inputs.pr_number }}/merge_queue_entry" | jq -r '.id // empty')
-
-            if [[ -n "$IN_MERGE_QUEUE" ]]; then
-              echo "⏳ PR is in the merge queue. Re-sending success status to GitHub API..."
-
-              RESPONSE=$(curl -s -w "\nHTTP_STATUS=%{http_code}" -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ inputs.commit_sha }}" \
-                -H "Authorization: token ${{ secrets.PAT_GITHUB }}" \
-                -d '{"state": "success", "context": "Final Merge Allow", "description": "Still waiting in merge queue, retrying...", "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}')
-
-              echo "🔍 Full API Response: $RESPONSE"
-
-              echo "⏳ Waiting for $SLEEP_INTERVAL seconds before retrying..."
-              sleep $SLEEP_INTERVAL
-            else
-              echo "❌ PR is not in merge queue or has conflicts. Exiting."
-              exit 1
-            fi
-
-            ATTEMPT=$((ATTEMPT + 1))
-          done
+          echo "🚀 Merging PR #$PR_NUMBER..."
+          gh pr merge $PR_NUMBER --squash --auto -R ${{ github.repository }}
 
           echo "❌ PR did not merge within the expected time. Manual intervention required."
           exit 1
