@@ -6,9 +6,9 @@ on:
       - master  # ✅ Runs only when PR enters the merge queue
 jobs:
   auto_merge:
-    runs-on: ubuntu-latest
     # ❌ Prevents workflow execution if triggered by `github-merge-queue`
-    if: github.actor != 'github-merge-queue' 
+    if: github.actor != 'github-merge-queue[bot]'
+    runs-on: ubuntu-latest
     steps:
       - name: ⏳ Wait for PR to enter merge queue
         run: sleep 60
@@ -30,7 +30,7 @@ jobs:
 
       - name: 🔄 Check Merge Queue Status (Retry on Failure)
         run: |
-          MAX_ATTEMPTS=5
+          MAX_ATTEMPTS=3
           ATTEMPT=1
           SLEEP_INTERVAL=120
 
@@ -51,7 +51,7 @@ jobs:
               echo "❌ PR has merge conflicts. Exiting."
               exit 1
             else
-              echo "⏳ PR is still 'unstable'. Sending temporary success status."
+              echo "⏳ PR is still 'unknown'. Sending temporary success status."
               curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
                 -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
                 -d '{"state": "success", "context": "Final Merge Allow", "description": "Merge validation pending, retrying...", "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
