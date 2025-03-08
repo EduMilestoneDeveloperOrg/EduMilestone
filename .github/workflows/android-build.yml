@@ -43,9 +43,9 @@ jobs:
 # 1️⃣ Pre-Checks & PR Validation (No dependencies)
   pr_restriction:
     name: 🚧 Enforce PR Restrictions
-    runs-on: ubuntu-latest
     # ❌ Prevents workflow execution if triggered by `github-merge-queue`
-    if: github.actor != 'github-merge-queue' 
+    if: github.actor != 'github-merge-queue[bot]' 
+    runs-on: ubuntu-latest
     steps:
       - name: ⏳ Delay Before Job Start
         run: sleep 3  # Adds a 3-second delay before execution
@@ -115,10 +115,10 @@ jobs:
 
   enforce_pr_description:
     name: 📜 Enforce PR Description
+    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
+    if: github.actor != 'github-merge-queue[bot]' 
     runs-on: ubuntu-latest
     needs: [pr_restriction]
-    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
-    if: github.actor != 'github-merge-queue' 
     steps:
       - name: ⏳ Delay Before Job Start
         run: sleep 3  # Adds a 3-second delay before execution
@@ -161,10 +161,10 @@ jobs:
 
   enforce_pr_files_limit:
     name: 📑 Limit PR File Changes (Max 50)
+    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
+    if: github.actor != 'github-merge-queue[bot]' 
     runs-on: ubuntu-latest
     needs: [enforce_pr_description]
-    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
-    if: github.actor != 'github-merge-queue' 
     steps:
       - name: ⏳ Delay Before Job Start
         run: sleep 3  # Adds a 3-second delay before execution
@@ -209,9 +209,9 @@ jobs:
   # 2️⃣ Security & Code Quality Checks (All depend on PR validation)
   security_scan:
     name: 🛡️ Run CodeQL Advanced Deep Scan
-    needs: [enforce_pr_files_limit]
     # ❌ Prevents workflow execution if triggered by `github-merge-queue`
-    if: github.actor != 'github-merge-queue' 
+    if: github.actor != 'github-merge-queue[bot]' 
+    needs: [enforce_pr_files_limit]
     uses: ./.github/workflows/codeql.yml  # Reusable CodeQL deep scan workflow
     with:
       language: 'java-kotlin'
@@ -219,10 +219,10 @@ jobs:
 
   dependency_scan:
     name: 🔍 Dependency Scan (Trivy)
+    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
+    if: github.actor != 'github-merge-queue[bot]' 
     runs-on: ubuntu-latest
     needs: [enforce_pr_files_limit]
-    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
-    if: github.actor != 'github-merge-queue' 
     steps:
       - name: ⏳ Delay Before Job Start
         run: sleep 3  # Adds a 3-second delay before execution
@@ -270,14 +270,14 @@ jobs:
  # Final Job merge check: Reporting Status to GitHub API
   merge_check:
     name: ✅ Final Merge Check (All Jobs Status)
+    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
+    if: github.actor != 'github-merge-queue[bot]' 
     runs-on: ubuntu-latest
     needs:
       - security_scan
       - dependency_scan
     outputs:
       merge_status: ${{ steps.verify_status.outputs.merge_status }}  # ✅ Pass status to auto_merge
-    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
-    if: github.actor != 'github-merge-queue' 
     steps:
       - name: ⏳ Delay Before Job Start
         run: sleep 3  # Adds a 3-second delay before execution
@@ -314,10 +314,10 @@ jobs:
 
   auto_merge:
     name: 🚀 Trigger Auto Merge
+    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
+    if: github.actor != 'github-merge-queue[bot]' 
     needs: [merge_check]
     runs-on: ubuntu-latest
-    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
-    if: github.actor != 'github-merge-queue' 
     steps:
       - name: ⏳ Wait for PR to enter merge queue
         run: sleep 60  # Increased to 1 minute for stability
