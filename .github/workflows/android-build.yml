@@ -311,6 +311,3 @@ jobs:
               -d '{"state": "failure", "context": "Final Merge Allow", "description": "Merge blocked due to job failure.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
             exit 1
           fi
-          echo "merge_ready=false" >> $GITHUB_ENV
-          echo "merge_ready=false" >> $GITHUB_OUTPUT
-          exit 1
