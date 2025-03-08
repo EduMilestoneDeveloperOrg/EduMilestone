@@ -39,10 +39,6 @@ permissions:
   actions: write
   statuses: write
 
-concurrency:
-  group: auto-merge-${{ github.actor }}
-  cancel-in-progress: true  # ✅ Cancels any in-progress workflow if a new one starts
-
 jobs:
 # 1️⃣ Pre-Checks & PR Validation (No dependencies)
   pr_restriction:
