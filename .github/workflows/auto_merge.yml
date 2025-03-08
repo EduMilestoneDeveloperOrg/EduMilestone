@@ -7,10 +7,12 @@ on:
     workflows: ["Android CI/CD Pipeline"]  # ✅ Waits for this workflow to complete
     types: 
       - completed
-
+  
 jobs:
   auto_merge:
     runs-on: ubuntu-latest
+    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
+    if: github.actor != 'github-merge-queue' 
     steps:
       - name: ⏳ Wait for PR to enter merge queue
         run: sleep 60
