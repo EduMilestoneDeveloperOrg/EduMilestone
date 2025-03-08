@@ -370,21 +370,26 @@ jobs:
             if [[ "$PR_MERGEABLE_STATE" == "clean" || "$PR_MERGEABLE_STATE" == "unstable" ]]; then
               echo "✅ PR is in a mergeable state or in merge queue. Proceeding with merge group."
 
-              # ✅ ADD PR TO MERGE GROUP (WITH RETRIES)
+              # ✅ SEND FINAL MERGE ALLOW STATUS
+              echo "🚀 Sending 'Final Merge Allow' status for PR #${{ env.pr_number }} with commit SHA: ${{ env.commit_sha }}"
+
               export GH_TOKEN=${{ secrets.PAT_GITHUB }}
               ATTEMPTS=3
               COUNT=0
 
               while [[ "$COUNT" -lt "$ATTEMPTS" ]]; do
-                echo "🚀 Attempting to add PR #${{ env.pr_number }} to merge group (Attempt $((COUNT+1)))..."
-                gh pr merge ${{ env.pr_number }} --merge --auto -R ${{ github.repository }} && exit 0
+                echo "🚀 Sending 'Final Merge Allow' (Attempt $((COUNT+1)))..."
+                gh api repos/${{ github.repository }}/statuses/${{ env.commit_sha }} \
+                  -f state="success" \
+                  -f description="Final Merge Allow: All checks passed" \
+                  -f context="Final Merge Allow" && exit 0
 
-                echo "⚠️ Merge attempt failed. Retrying in 15s..."
+                echo "⚠️ Failed to send 'Final Merge Allow'. Retrying in 15s..."
                 sleep 15
                 COUNT=$((COUNT + 1))
               done
 
-              echo "❌ All merge attempts failed! Exiting."
+              echo "❌ All attempts to send 'Final Merge Allow' failed! Exiting."
               exit 1
             fi
 
@@ -392,6 +397,3 @@ jobs:
             sleep $SLEEP_INTERVAL
             RETRY=$((RETRY + 1))
           done
-
-          echo "❌ PR is not in a 'clean' state for merging after retries. Skipping auto-merge."
-          exit 1
