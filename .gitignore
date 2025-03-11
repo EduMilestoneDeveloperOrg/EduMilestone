@@ -21,6 +21,9 @@
 /outputs/
 /intermediates/
 /out/
+app/build/  # Ensure app-specific build directory is ignored
+milestone/build/
+milestone/milestone_modules_01/build/
 
 # ✅ OS-specific files
 .DS_Store  # MacOS
@@ -56,5 +59,9 @@ lint/reports/
 *.swo
 
 local.properties
-milestone/build/
-milestone/milestone_modules_01/build/
+
+# ✅ Additional Android Build Directories
+android/app/build/
+android/.gradle/
+android/.idea/
+android/local.properties

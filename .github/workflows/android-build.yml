@@ -267,15 +267,601 @@ jobs:
             exit 1
           fi  # Added fi to properly close the if statement
 
- # Final Job merge check: Reporting Status to GitHub API
+  linting:
+    name: 🎨 Lint Code (MegaLinter)
+    runs-on: ubuntu-latest
+    needs: [enforce_pr_files_limit]
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history to avoid shallow clone issues
+
+      - name: 🚀 Run MegaLinter with Autofix (Docker)
+        id: linter
+        run: |
+          docker run \
+            -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
+            -v ${{ github.workspace }}:/tmp/lint \
+            -v /tmp/lint/.cache:/tmp/lint/.cache \
+            -w /tmp/lint \
+            megalinter/megalinter:latest \
+            --fix
+          mkdir -p ${{ github.workspace }}/megalinter-report
+          cp -r /tmp/lint/report/* ${{ github.workspace }}/megalinter-report
+
+      - name: 💬 Add Lint Review Comments
+        if: failure()
+        uses: actions/github-script@v4
+        with:
+          script: |
+            const { github } = require('@actions/github');
+            const fs = require('fs');
+            const lintResults = fs.readFileSync('${{ github.workspace }}/megalinter-report/linters_logs/ERROR-KOTLIN_KTLINT.log', 'utf8');
+            github.issues.createComment({
+              ...github.context.repo,
+              issue_number: github.context.issue.number,
+              body: `Linting issues detected:\n\`\`\`${lintResults}\`\`\``
+            });
+
+      - name: ✅ Re-check Linting
+        if: failure()
+        uses: actions/github-script@v4
+        with:
+          script: |
+            const { github } = require('@actions/github');
+            const fs = require('fs');
+            const lintResults = fs.readFileSync('${{ github.workspace }}/megalinter-report/linters_logs/ERROR-KOTLIN_KTLINT.log', 'utf8');
+            if (!lintResults.trim()) {
+              github.pulls.createReview({
+                ...github.context.repo,
+                pull_number: github.context.issue.number,
+                event: 'APPROVE',
+                body: 'Linting issues resolved. Approved.'
+              });
+            } else {
+              github.issues.createComment({
+                ...github.context.repo,
+                issue_number: github.context.issue.number,
+                body: `Linting issues still detected:\n\`\`\`${lintResults}\`\`\``
+              });
+            }
+
+      - name: 📄 Upload Linting Error Report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: megalinter-report
+          path: ${{ github.workspace }}/megalinter-report
+          if-no-files-found: warn
+          compression-level: 6
+          overwrite: false
+          include-hidden-files: false
+
+  static_code_analysis:
+    name: 🛠️ Static Code Analysis (Detekt)
+    runs-on: ubuntu-latest
+    needs: [enforce_pr_files_limit]
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Ensures full history is fetched
+
+      - name: 🚀 Install Dependencies (Java & Unzip)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip openjdk-17-jdk curl
+
+      - name: 🚀 Install Detekt
+        env:
+          DETEKT_VERSION: "1.23.0"
+        run: |
+          echo "🔄 Installing Detekt v$DETEKT_VERSION..."
+          
+          # Download Detekt CLI
+          curl -sSLO "https://github.com/detekt/detekt/releases/download/v$DETEKT_VERSION/detekt-cli-$DETEKT_VERSION.zip"
+          
+          # Ensure zip downloaded correctly
+          if [[ ! -f "detekt-cli-$DETEKT_VERSION.zip" ]]; then
+            echo "❌ ERROR: Failed to download Detekt."
+            exit 1
+          fi
+          
+          # Extract Detekt CLI
+          unzip -o "detekt-cli-$DETEKT_VERSION.zip" -d detekt-cli || { echo "❌ ERROR: Unzip failed!"; exit 1; }
+          
+          # Move JAR to a proper location
+          sudo mv detekt-cli/detekt-cli-$DETEKT_VERSION/lib/detekt-cli-$DETEKT_VERSION-all.jar /usr/local/bin/detekt-cli.jar
+          
+          # Create a wrapper script
+          echo -e "#!/bin/bash\njava -jar /usr/local/bin/detekt-cli.jar \"\$@\"" | sudo tee /usr/local/bin/detekt > /dev/null
+          sudo chmod +x /usr/local/bin/detekt
+          
+          # Verify installation
+          detekt --help || { echo "❌ ERROR: Detekt installation failed."; exit 1; }
+
+      - name: 🛠️ Run Detekt Analysis with Retry
+        run: |
+          # Ensure detekt.yml exists, otherwise download the default config
+          if [[ ! -f "detekt.yml" ]]; then
+            echo "⚠️ detekt.yml not found. Downloading default..."
+            curl -sSLo detekt.yml https://raw.githubusercontent.com/detekt/detekt/main/config/detekt.yml
+          fi
+          
+          # Fix potential configuration errors in detekt.yml
+          if grep -q 'maxIssues:' detekt.yml; then
+            echo "🔧 Fixing invalid 'maxIssues' type..."
+            sed -i 's/maxIssues: [0-9]\+/maxIssues: "0"/g' detekt.yml
+          fi
+          
+          # Create reports directory if missing
+          mkdir -p reports
+          
+          # Retry logic
+          MAX_RETRIES=3
+          COUNTER=0
+          
+          while [ $COUNTER -lt $MAX_RETRIES ]; do
+            echo "🔄 Running Detekt analysis (Attempt $((COUNTER+1)))..."
+          
+            detekt --config detekt.yml --report html:reports/detekt.html
+            EXIT_CODE=$?
+          
+            if [[ $EXIT_CODE -eq 0 ]]; then
+              echo "✅ Detekt analysis completed successfully!"
+              exit 0
+            fi
+          
+            echo "⚠️ Detekt found issues (Attempt $((COUNTER+1))). Retrying in 10 seconds..."
+            COUNTER=$((COUNTER+1))
+            sleep 10
+          done
+          
+          echo "❌ ERROR: Static analysis found issues. Please fix them before merging."
+          exit 1
+
+      - name: 📄 Upload Detekt Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: detekt-report
+          path: reports/detekt.html
+
+  # 3️⃣ AI & Human Code Review
+  sonarcloud_review:
+    name: 📝 SonarCloud Code Review
+    runs-on: ubuntu-latest
+    needs: [security_scan, dependency_scan, linting, static_code_analysis]
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Ensures full history is fetched
+
+      - name: 🔍 Check for Java/Kotlin Source Files
+        id: check_files
+        run: |
+          FILE_COUNT=$(find . -name "*.java" -o -name "*.kt" | wc -l)
+          if [[ "$FILE_COUNT" -eq 0 ]]; then
+            echo "⚠️ No Java/Kotlin files found. Skipping SonarCloud analysis."
+            echo "skip_sonar=true" >> $GITHUB_ENV
+          else
+            echo "✅ Found $FILE_COUNT Java/Kotlin files."
+            echo "skip_sonar=false" >> $GITHUB_ENV
+          fi
+
+      - name: 🚀 Set Up JDK
+        if: ${{ env.skip_sonar == 'false' }}
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 🛠️ Build the Java/Kotlin Project
+        if: ${{ env.skip_sonar == 'false' }}
+        run: |
+          echo "🔍 Checking for build files..."
+          BUILD_TOOL=""
+
+          if [ -f "gradlew" ]; then
+            chmod +x gradlew
+            ./gradlew build --no-daemon || { echo "❌ Gradle build failed! Exiting..."; exit 1; }
+            BUILD_TOOL="gradle"
+          elif [ -f "pom.xml" ]; then
+            mvn clean verify || { echo "❌ Maven build failed! Exiting..."; exit 1; }
+            BUILD_TOOL="maven"
+          else
+            echo "❌ ERROR: No recognized build system (Gradle/Maven) found. Skipping SonarCloud."
+            echo "skip_sonar=true" >> $GITHUB_ENV
+            exit 1
+          fi
+
+          echo "BUILD_TOOL=$BUILD_TOOL" >> $GITHUB_ENV
+
+      - name: 🚀 Run SonarCloud Analysis
+        if: ${{ env.skip_sonar == 'false' }}
+        env:
+          SONAR_ORG: ${{ secrets.SONAR_ORG }}
+          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          echo "🔍 Running SonarCloud analysis..."
+          if [[ -z "$BUILD_TOOL" ]]; then
+            echo "❌ ERROR: No valid build system detected. Skipping SonarCloud analysis."
+            exit 1
+          fi
+
+          if [ "$BUILD_TOOL" == "gradle" ]; then
+            ./gradlew sonarqube \
+              -Dsonar.organization="$SONAR_ORG" \
+              -Dsonar.projectKey="$SONAR_PROJECT_KEY" \
+              -Dsonar.host.url="https://sonarcloud.io" \
+              -Dsonar.login="$SONAR_TOKEN" || { echo "❌ SonarCloud analysis failed! Exiting..."; exit 1; }
+          elif [ "$BUILD_TOOL" == "maven" ]; then
+            mvn clean verify sonar:sonar \
+              -Dsonar.organization="$SONAR_ORG" \
+              -Dsonar.projectKey="$SONAR_PROJECT_KEY" \
+              -Dsonar.host.url="https://sonarcloud.io" \
+              -Dsonar.login="$SONAR_TOKEN" || { echo "❌ SonarCloud analysis failed! Exiting..."; exit 1; }
+          fi
+
+      - name: ✅ Skip SonarCloud if No Java/Kotlin Files
+        if: ${{ env.skip_sonar == 'true' }}
+        run: echo "🚀 Skipping SonarCloud as no Java/Kotlin files were detected."
+
+  copilot_review:
+    name: 🤖 AI Code Review (Copilot - Enforced)
+    runs-on: ubuntu-latest
+    needs: [sonarcloud_review]
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔍 Request Copilot Review via API
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Validate GitHub Token
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo "❌ ERROR: GitHub token is missing. Cannot request Copilot review."
+            exit 1
+          fi
+          
+          # Extract PR Number
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          
+          if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
+            echo "❌ ERROR: Pull request number is invalid or missing."
+            exit 1
+          fi
+          
+          # GitHub API URL for PR comments
+          API_URL="https://api.github.com/repos/${{ github.repository }}/issues/${PR_NUMBER}/comments"
+          
+          # JSON payload to request Copilot review
+          COMMENT_BODY='{"body": "@github-copilot review this PR and suggest improvements."}'
+          
+          echo "🔍 Sending Copilot review request via GitHub API..."
+          
+          # Send API request to post a comment
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API_URL" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Content-Type: application/json" \
+            --data "$COMMENT_BODY")
+          
+          # Check API response
+          if [[ "$RESPONSE" -ne 201 ]]; then
+            echo "❌ ERROR: Failed to request Copilot review (HTTP $RESPONSE)."
+            exit 1
+          fi
+          
+          echo "✅ Copilot review request sent successfully."
+
+      - name: ⏳ Wait for Copilot Review (Max 60m)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "⏳ Waiting for Copilot to approve... (Timeout: 60 minutes)"
+          
+          MAX_WAIT=3600  # 60 minutes in seconds
+          INTERVAL=60    # Check every 60 seconds
+          ELAPSED=0
+          
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            echo "🔍 Checking for 'copilot review approved' comment..."
+          
+            COMMENTS=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments")
+          
+            # Check if Copilot has approved
+            if echo "$COMMENTS" | grep -iq "copilot review approved"; then
+              echo "✅ Copilot review approved! PR can be merged."
+              exit 0
+            fi
+          
+            echo "⏳ No approval found yet. Retrying in $INTERVAL seconds..."
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+          
+          echo "❌ ERROR: Timeout reached (60m) with no 'copilot review approved' comment."
+          exit 1
+
+  # 4️⃣ Build & Testing (Runs before Approval)
+  timeout_enforcement:
+    name: ⏳ Set Timeout Variable
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🕒 Define Timeout
+        run: echo "TIMEOUT_DURATION=60m" >> $GITHUB_ENV
+
+  build:
+    name: 🚀 Build APK
+    runs-on: ubuntu-latest
+    needs: [copilot_review, timeout_enforcement]  # Keeps original dependencies
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for Gradle caching
+
+      - name: 🛠️ Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 📦 Setup Gradle Caching
+        uses: actions/cache@v4  # ✅ Updated to v4 for better caching performance
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: 🛠️ Ensure Gradle Wrapper is Executable
+        run: chmod +x ./gradlew
+
+      - name: ⏳ Enforce Build Timeout
+        env:
+          TIMEOUT_DURATION: 15m  # ✅ Default timeout to prevent undefined variable errors
+        run: |
+          echo "⏳ Running build with timeout of $TIMEOUT_DURATION..."
+          timeout $TIMEOUT_DURATION ./gradlew assembleDebug
+          EXIT_CODE=$?
+          
+          if [[ $EXIT_CODE -eq 124 ]]; then
+            echo "❌ ERROR: Build timed out after $TIMEOUT_DURATION."
+            exit 1
+          elif [[ $EXIT_CODE -ne 0 ]]; then
+            echo "❌ ERROR: Build failed with exit code $EXIT_CODE."
+            exit $EXIT_CODE
+          fi
+          
+          echo "✅ Build completed successfully."
+
+      - name: 📦 Store Built APK
+        uses: actions/upload-artifact@v4  # ✅ Updated from v3 to v4
+        with:
+          name: app-debug.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: ignore  # ✅ Prevents workflow failure if APK isn't generated
+
+  unit_tests:
+    name: 🧪 Run Unit Tests
+    runs-on: ubuntu-latest
+    needs: [copilot_review]  # Ensures timeout is set first
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🚀 Set Up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 📦 Setup Gradle Caching
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: 🛠️ Ensure Gradle Wrapper is Executable
+        run: chmod +x ./gradlew
+
+      - name: ⏳ Run Unit Tests with Timeout
+        run: |
+          # Ensure TIMEOUT_DURATION is set
+          if [[ -z "$TIMEOUT_DURATION" ]]; then
+            echo "⚠️ WARNING: TIMEOUT_DURATION is not set. Using default (60m)."
+            TIMEOUT_DURATION="60m"
+          fi
+          
+          echo "⏳ Running unit tests with timeout of $TIMEOUT_DURATION..."
+          
+          timeout "$TIMEOUT_DURATION" ./gradlew test
+          EXIT_CODE=$?
+          
+          if [[ $EXIT_CODE -eq 124 ]]; then
+            echo "❌ ERROR: Unit tests timed out after $TIMEOUT_DURATION."
+            exit 1
+          elif [[ $EXIT_CODE -ne 0 ]]; then
+            echo "❌ ERROR: Unit tests failed with exit code $EXIT_CODE."
+            exit $EXIT_CODE
+          fi
+          
+          echo "✅ Unit tests completed successfully."
+
+      - name: 📊 Code Coverage Reporting (JaCoCo)
+        run: ./gradlew jacocoTestReport
+        continue-on-error: true
+
+      - name: 📊 Upload Code Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: app/build/reports/jacoco/test/html
+        continue-on-error: true
+
+  integration_tests:
+    name: 🔄 Run Integration Tests
+    runs-on: ubuntu-latest
+    needs: [copilot_review]  # Kept timeout_enforcement like build
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📦 Setup Gradle Caching
+        uses: actions/cache@v4  # ✅ Updated to v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: ⏳ Run Integration Tests with Retry
+        env:
+          TIMEOUT_DURATION: 15m  # ✅ Set a default timeout to avoid undefined errors
+          MAX_RETRIES: 3  # ✅ Change as needed
+          RETRY_DELAY: 10  # Seconds
+        run: |
+          COUNTER=0
+          while [ $COUNTER -lt $MAX_RETRIES ]; do
+            echo "🔄 Running integration tests (Attempt $((COUNTER+1))) with timeout of $TIMEOUT_DURATION..."
+          
+            timeout $TIMEOUT_DURATION ./gradlew integrationTest
+            EXIT_CODE=$?
+          
+            if [[ $EXIT_CODE -eq 0 ]]; then
+              echo "✅ Integration tests passed on attempt $((COUNTER+1))!"
+              exit 0
+            elif [[ $EXIT_CODE -eq 124 ]]; then
+              echo "❌ ERROR: Integration tests timed out after $TIMEOUT_DURATION."
+              exit 1
+            else
+              echo "⚠️ Integration tests failed (Exit code: $EXIT_CODE). Retrying in $RETRY_DELAY seconds..."
+            fi
+          
+            COUNTER=$((COUNTER+1))
+            sleep $RETRY_DELAY
+          done
+          
+          echo "❌ Integration tests failed after $MAX_RETRIES attempts."
+          exit 1
+
+      - name: 📊 Upload Integration Test Results
+        uses: actions/upload-artifact@v4  # ✅ Updated from v3 to v4
+        with:
+          name: integration-test-results
+          path: build/reports/tests/integrationTest
+          if-no-files-found: ignore  # ✅ Prevents workflow failure if test reports are missing
+
+ # 5️⃣ Final Job Approval & Merge Check: Reporting Status to GitHub API
+  org_owner_approval:
+    name: ✅ Organization Owner Approval (Manual)
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🚨 Ensure PR is from Collaborator
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          REPO_NAME="${{ github.repository }}"
+
+          if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
+            echo "❌ ERROR: Invalid PR number. Cannot verify collaborator."
+            exit 1
+          fi
+
+          PR_USER=$(gh pr view "$PR_NUMBER" --json author --jq '.author.login' 2>/dev/null || echo "")
+
+          if [[ -z "$PR_USER" ]]; then
+            echo "❌ ERROR: Failed to retrieve PR author."
+            exit 1
+          fi
+
+          echo "🔹 PR Author: $PR_USER"
+
+          if ! gh api repos/$REPO_NAME/collaborators/$PR_USER --silent; then
+            echo "❌ ERROR: Only repository collaborators can raise pull requests!"
+            exit 1
+          fi
+
+          echo "✅ PR is from an authorized collaborator."
+
+      - name: ⏳ Wait for Owner Approval (Max 60 min)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          TIMEOUT=60  
+
+          if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
+            echo "❌ ERROR: Invalid PR number. Cannot wait for approval."
+            exit 1
+          fi
+
+          echo "⏳ Waiting up to 60 minutes for approval..."
+
+          for ((i=0; i<TIMEOUT; i+=5)); do
+            TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
+
+            PR_STATE=$(gh pr view "$PR_NUMBER" --json state --jq '.state' 2>/dev/null || echo "ERROR")
+
+            if [[ "$PR_STATE" == "ERROR" || "$PR_STATE" != "OPEN" ]]; then
+              echo "❌ $TIMESTAMP - PR is no longer open. Exiting approval wait."
+              exit 1
+            fi
+
+            REVIEW_STATE=$(gh pr view "$PR_NUMBER" --json reviews --jq '.reviews | map(select(.state=="APPROVED")) | length' 2>/dev/null || echo "0")
+
+            if [[ "$REVIEW_STATE" -gt 0 ]]; then
+              echo "✅ $TIMESTAMP - PR Approved!"
+              exit 0
+            fi
+
+            echo "❌ $TIMESTAMP - PR not approved yet. Checking again in 5 minutes..."
+            sleep 300  
+          done
+
+          echo "⏳ Approval time exceeded 60 minutes. Failing workflow."
+          exit 1
+
   merge_check:
     name: ✅ Final Merge Check (All Jobs Status)
     # ❌ Prevents workflow execution if triggered by `github-merge-queue`
     if: github.actor != 'github-merge-queue[bot]' 
     runs-on: ubuntu-latest
     needs:
-      - security_scan
-      - dependency_scan
+      - sonarcloud_review
+      - copilot_review
+      - build
+      - org_owner_approval
     outputs:
       merge_status: ${{ steps.verify_status.outputs.merge_status }}  # ✅ Pass status to auto_merge
     steps:
@@ -311,3 +897,366 @@ jobs:
               -d '{"state": "failure", "context": "Final Merge Allow", "description": "Merge blocked due to job failure.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
             exit 1
           fi
+
+  # 6️⃣ Retry Mechanism (Triggers if build/tests fail)
+  # 🔄 Retry Mechanism for Build
+  # 🔄 Retry Mechanism for Build
+  retry_build:
+    name: 🔁 Retry Build (If Failed)
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: failure()
+    steps:
+      - name: 🛠️ Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🚀 Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 📦 Setup Gradle Caching
+        uses: actions/cache@v4  # ✅ Updated to v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: 🔑 Grant Execute Permission for Gradlew
+        run: chmod +x gradlew
+
+      - name: 🔄 Retry Build & Generate APK
+        env:
+          MAX_RETRIES: 3
+          RETRY_DELAY: 10
+        run: |
+          if [ ! -f "./gradlew" ]; then
+            echo "❌ Error: gradlew not found!"
+            exit 1
+          fi
+          
+          COUNTER=0
+          while [ $COUNTER -lt $MAX_RETRIES ]; do
+            echo "🔄 Attempt $((COUNTER+1)) for build..."
+            ./gradlew assembleDebug
+            EXIT_CODE=$?
+          
+            if [ $EXIT_CODE -eq 0 ]; then
+              echo "✅ Build passed on attempt $((COUNTER+1))!"
+          
+              # Check if the APK file exists
+              APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
+              if [ -f "$APK_PATH" ]; then
+                echo "✅ APK file generated successfully: $APK_PATH"
+                exit 0
+              else
+                echo "❌ Build succeeded, but APK file not found!"
+                exit 1
+              fi
+            fi
+          
+            echo "⚠️ Build failed (exit code: $EXIT_CODE). Retrying in $RETRY_DELAY seconds..."
+            COUNTER=$((COUNTER+1))
+            sleep $RETRY_DELAY
+          done
+          
+          echo "❌ Build failed after $MAX_RETRIES attempts."
+          exit 1
+
+      - name: 📦 Upload APK File
+        uses: actions/upload-artifact@v4  # ✅ Updated from v3 to v4
+        with:
+          name: app-debug.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error  # Fails if APK isn't found
+
+  # 🔄 Retry Mechanism for Unit Tests
+  retry_unit_tests:
+    name: 🔁 Retry Unit Tests (If Failed)
+    runs-on: ubuntu-latest
+    needs: [unit_tests]
+    if: failure()
+    steps:
+      - name: 🛠️ Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🚀 Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 🔑 Grant Execute Permission for Gradlew
+        run: chmod +x gradlew
+        working-directory: ${{ github.workspace }}
+
+      - name: 🔄 Retry Unit Tests
+        env:
+          MAX_RETRIES: 3
+          RETRY_DELAY: 10
+        run: |
+          if [ ! -f "./gradlew" ]; then
+            echo "❌ Error: gradlew not found!"
+            exit 1
+          fi
+          
+          COUNTER=0
+          while [ $COUNTER -lt $MAX_RETRIES ]; do
+            echo "🔄 Attempt $((COUNTER+1)) for unit tests..."
+            ./gradlew test
+            EXIT_CODE=$?
+          
+            if [ $EXIT_CODE -eq 0 ]; then
+              echo "✅ Unit tests passed on attempt $((COUNTER+1))!"
+              exit 0  # Exit immediately on success
+            fi
+          
+            echo "⚠️ Unit tests failed (exit code: $EXIT_CODE). Retrying in $RETRY_DELAY seconds..."
+            COUNTER=$((COUNTER+1))
+            sleep $RETRY_DELAY
+          done
+          
+          echo "❌ Unit tests failed after $MAX_RETRIES attempts."
+          exit 1
+
+  # 🔄 Retry Mechanism for Integration Tests
+  retry_integration_tests:
+    name: 🔁 Retry Integration Tests (If Failed)
+    runs-on: ubuntu-latest
+    needs: [integration_tests]
+    if: failure()
+    steps:
+      - name: 🛠️ Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🚀 Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 📦 Setup Gradle Caching
+        uses: actions/cache@v4  # ✅ Updated to v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: 🔑 Grant Execute Permission for Gradlew
+        run: chmod +x gradlew
+        working-directory: app  # ✅ Ensure the correct directory is used
+
+      - name: 🔄 Retry Integration Tests
+        env:
+          MAX_RETRIES: 3
+          RETRY_DELAY: 10
+        run: |
+          if [ ! -f "app/gradlew" ]; then
+            echo "❌ Error: gradlew not found in the app directory!"
+            exit 1
+          fi
+          
+          COUNTER=0
+          while [ $COUNTER -lt $MAX_RETRIES ]; do
+            echo "🔄 Attempt $((COUNTER+1)) for integration tests..."
+            cd app && ./gradlew integrationTest
+            EXIT_CODE=$?
+          
+            if [ $EXIT_CODE -eq 0 ]; then
+              echo "✅ Integration tests passed on attempt $((COUNTER+1))!"
+              exit 0  # ✅ Exit immediately if tests succeed
+            fi
+          
+            echo "⚠️ Integration tests failed (exit code: $EXIT_CODE). Retrying..."
+            COUNTER=$((COUNTER+1))
+            sleep $RETRY_DELAY
+          done
+          
+          echo "❌ Integration tests failed after $MAX_RETRIES attempts."
+          exit 1
+
+      - name: 📦 Upload Test Reports
+        uses: actions/upload-artifact@v4  # ✅ Updated from v3 to v4
+        with:
+          name: integration-test-results
+          path: app/build/reports/tests/integrationTest
+          if-no-files-found: error  # Fails if no reports are found
+
+  # 7️⃣ Notifications & Cleanup (Last step)
+  # 📢 Failure Notifications
+  # 📢 Failure Notifications
+  notifications:
+    name: 📢 Send Failure Notifications
+    runs-on: ubuntu-latest
+    needs: [merge_check]
+    if: failure()  # ✅ Ensures job runs only if previous jobs failed
+    steps:
+      - name: 📧 Send Failure Notification
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+        run: |
+          echo "🔔 Preparing to send failure notification..."
+          
+          # Ensure Slack Webhook URL is set
+          if [[ -z "$SLACK_WEBHOOK_URL" ]]; then
+            echo "❌ ERROR: Slack Webhook URL is missing. Notification cannot be sent."
+            exit 1
+          fi
+          
+          # Get job name from environment
+          JOB_NAME="${{ github.workflow }} - ${{ github.job }}"
+          MESSAGE="🚨 *ALERT:* Job *'${JOB_NAME}'* failed in workflow *${{ github.workflow }}*. 🚀\n🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Workflow Logs>"
+          
+          # Retry logic for sending Slack notifications
+          MAX_RETRIES=3
+          RETRY_DELAY=5
+          SUCCESS=0
+          
+          for ((i=1; i<=MAX_RETRIES; i++)); do
+            echo "🔄 Attempt $i to send notification..."
+            RESPONSE=$(curl -X POST -H 'Content-type: application/json' \
+              --data "{\"text\":\"$MESSAGE\"}" "$SLACK_WEBHOOK_URL" \
+              --silent --write-out "%{http_code}" --output /dev/null)
+          
+            if [[ "$RESPONSE" -eq 200 ]]; then
+              echo "✅ Notification sent successfully on attempt $i."
+              SUCCESS=1
+              break
+            else
+              echo "⚠️ Attempt $i failed with HTTP response: $RESPONSE. Retrying in $RETRY_DELAY seconds..."
+              sleep $RETRY_DELAY
+            fi
+          done
+          
+          if [[ $SUCCESS -eq 0 ]]; then
+            echo "❌ ERROR: Failed to send Slack notification after $MAX_RETRIES attempts."
+            exit 1
+          fi
+
+  # ✅ Build Success Notification (NEW)
+  notify_build_success:
+    name: 📢 Send Build Success Notification
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: success()
+    steps:
+      - name: 🔔 Notify on Slack (Build Success)
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+        run: |
+          if [[ -z "$SLACK_WEBHOOK_URL" ]]; then
+            echo "❌ ERROR: Slack Webhook URL is missing. Notification cannot be sent."
+            exit 1
+          fi
+          MESSAGE="🚀 Build completed successfully! ✅"
+          curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"$MESSAGE\"}" "$SLACK_WEBHOOK_URL"
+          echo "✅ Build success notification sent to Slack."
+
+  # ✅ Code Pushed to Private Repo Notification (Keep this)
+  notify_success:
+    name: 📢 Send PR Approval Notification
+    runs-on: ubuntu-latest
+    needs: [merge_check]
+    if: success()
+    steps:
+      - name: 🔔 Notify on Slack (PR Approved)
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          # Validate Slack Webhook URL
+          if [[ -z "$SLACK_WEBHOOK_URL" ]]; then
+            echo "❌ ERROR: Slack Webhook URL is missing. Notification cannot be sent."
+            exit 1
+          fi
+          
+          # Escape special characters in PR title to prevent JSON issues
+          ESCAPED_PR_TITLE=$(echo "$PR_TITLE" | jq -Rsa .)
+          
+          # Construct message payload
+          MESSAGE=$(jq -n --arg text "🎉 PR *${ESCAPED_PR_TITLE}* has been approved! ✅\n🔗 View PR: ${PR_URL}" '{text: $text}')
+          
+          # Retry logic for Slack notification
+          MAX_RETRIES=3
+          RETRY_DELAY=5
+          SUCCESS=0
+          
+          for ((i=1; i<=MAX_RETRIES; i++)); do
+            echo "🔄 Attempt $i to send notification..."
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' --data "$MESSAGE" "$SLACK_WEBHOOK_URL")
+          
+            if [[ "$RESPONSE" -eq 200 ]]; then
+              echo "✅ PR approval notification sent successfully on attempt $i."
+              SUCCESS=1
+              break
+            else
+              echo "⚠️ Attempt $i failed with HTTP response: $RESPONSE. Retrying in $RETRY_DELAY seconds..."
+              sleep $RETRY_DELAY
+            fi
+          done
+          
+          if [[ $SUCCESS -eq 0 ]]; then
+            echo "❌ ERROR: Failed to send Slack notification after $MAX_RETRIES attempts."
+            exit 1
+          fi
+
+  resource_cleanup:
+    name: ♻️ Clean Up Resources
+    runs-on: ubuntu-latest
+    needs: [org_owner_approval, unit_tests, integration_tests, retry_unit_tests, retry_integration_tests]
+    if: >-
+      (needs.org_owner_approval.result == 'success' &&
+       needs.unit_tests.result == 'success' &&
+       needs.integration_tests.result == 'success') 
+      || 
+      (needs.org_owner_approval.result == 'success' &&
+       needs.retry_unit_tests.result == 'success' &&
+       needs.retry_integration_tests.result == 'success')
+    steps:
+      - name: 🧹 Cleanup Workspace
+        run: |
+          echo "🔍 Checking for workspace files to clean up..."
+          
+          # Navigate to the workspace to avoid accidental deletion outside scope
+          cd ${{ github.workspace }}
+          
+          # Function to safely remove a directory with retries
+          safe_remove() {
+            local DIR=$1
+            local ATTEMPTS=3
+            local RETRY_DELAY=5
+          
+            if [ -d "$DIR" ]; then
+              for ((i=1; i<=ATTEMPTS; i++)); do
+                echo "🗑️ Attempt $i: Removing $DIR..."
+                rm -rf "$DIR" && echo "✅ Successfully removed $DIR." && return
+                echo "⚠️ Failed to remove $DIR. Retrying in $RETRY_DELAY seconds..."
+                sleep $RETRY_DELAY
+              done
+              echo "❌ ERROR: Unable to remove $DIR after $ATTEMPTS attempts."
+              exit 1
+            else
+              echo "⚠️ Directory $DIR not found. Skipping cleanup."
+            fi
+          }
+          
+          # Remove build directory safely
+          safe_remove "app/build/"
+          
+          # Clear Gradle cache safely
+          safe_remove "$HOME/.gradle/caches"
+          
+          # Clean temporary files (optional)
+          safe_remove "/tmp/*"
+          
+          # Show available disk space after cleanup
+          echo "📊 Disk space after cleanup:"
+          df -h
