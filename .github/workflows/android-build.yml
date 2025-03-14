@@ -43,7 +43,7 @@ permissions:
 jobs:
   pr_restriction:
     name: 🚧 Enforce PR Restrictions
-    # ❌ Prevents workflow execution if triggered by github-merge-queue
+    # ❌ Prevents workflow execution if triggered by 'github-merge-queue'
     if: github.actor != 'github-merge-queue[bot]' 
     runs-on: ubuntu-latest
     steps:
@@ -64,6 +64,7 @@ jobs:
           echo "🔍 Extracting PR Number..."
           PR_NUMBER="${{ github.event.pull_request.number }}"
           REPO_NAME="${{ github.repository }}"
+          PR_USER="${{ github.event.pull_request.user.login }}"
   
           if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
             echo "❌ ERROR: PR number is missing or invalid."
@@ -77,49 +78,31 @@ jobs:
           gh auth status || { echo "❌ GH_TOKEN authentication failed!"; exit 1; }
   
           echo "🔍 Fetching PR Author..."
-          PR_USER=$(curl -s -H "Authorization: token $GH_TOKEN" \
-            "https://api.github.com/repos/$REPO_NAME/pulls/$PR_NUMBER" | jq -r '.user.login')
-  
-          if [[ -z "$PR_USER" || "$PR_USER" == "null" ]]; then
-            echo "❌ ERROR: Failed to retrieve PR author."
-            exit 1
-          fi
-  
           echo "✅ PR Author: $PR_USER"
   
-          echo "🔍 Checking if PR author is a collaborator or member..."
-          COLLABORATOR_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" \
-            "https://api.github.com/repos/$REPO_NAME/collaborators/$PR_USER")
-  
-          if [[ "$COLLABORATOR_STATUS" -ne 204 ]]; then
-            echo "❌ ERROR: Only repository collaborators or members can raise pull requests!"
-            exit 1
-          fi
-  
-          echo "✅ PR is from an authorized collaborator or member."
-  
           echo "🔍 Checking if PR author is a member of 'neural-vision' team..."
-          TEAM_MEMBERS_URL="https://api.github.com/orgs/EduMilestoneDeveloperOrg/teams/neural-vision/members"
-          TEAM_MEMBERS=$(curl -s -H "Authorization: token $GH_TOKEN" "$TEAM_MEMBERS_URL" | jq -r '.[].login')
+          TEAM_MEMBERS_URL="https://api.github.com/orgs/EduMilestoneDeveloperOrg/teams/neural-vision/members/$PR_USER"
+          TEAM_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" "$TEAM_MEMBERS_URL")
   
-          if echo "$TEAM_MEMBERS" | grep -q "^$PR_USER$"; then
-            echo "✅ PR Author '$PR_USER' is a member of the 'neural-vision' team."
-          else
-            echo "❌ ERROR: PR Author '$PR_USER' is NOT a member of 'neural-vision'. PRs from unauthorized users are blocked!"
+          if [[ "$TEAM_STATUS" -ne 204 ]]; then
+            echo "❌ ERROR: PR Author '$PR_USER' is NOT a member of 'neural-vision'. PR is blocked!"
             exit 1
           fi
+  
+          echo "✅ PR Author '$PR_USER' is a verified member of the 'neural-vision' team."
   
           echo "🔍 Checking branch name..."
-          PR_BRANCH="${{ github.head_ref }}"
+          PR_BRANCH="${{ github.head.ref }}"
           echo "🔹 PR Branch: $PR_BRANCH"
   
-          # Check if branch name contains the required string
+          # Enforce a specific naming pattern for branches
           if [[ ! "$PR_BRANCH" =~ M/M01/PROD_TOOLS/OCR/ ]]; then
             echo "❌ ERROR: Branch name does not meet the required pattern 'M/M01/PROD_TOOLS/OCR/'."
             exit 1
           fi
-          echo "✅ Branch name '$PR_BRANCH' is valid and meets the required pattern."
   
+          echo "✅ Branch name '$PR_BRANCH' is valid and meets the required pattern."
+
   enforce_pr_description:
     name: 📜 Enforce PR Description
     # ❌ Prevents workflow execution if triggered by `github-merge-queue`
