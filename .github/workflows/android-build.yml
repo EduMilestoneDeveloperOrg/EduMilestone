@@ -44,7 +44,6 @@ jobs:
 # 1️⃣ Pre-Checks & PR Validation (No dependencies)
   pr_restriction:
     name: 🚧 Enforce PR Restrictions
-    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
     if: github.actor != 'github-merge-queue[bot]' 
     runs-on: ubuntu-latest
     steps:
@@ -83,40 +82,29 @@ jobs:
   
           if [[ -z "$PR_USER" || "$PR_USER" == "null" ]]; then
             echo "❌ ERROR: Failed to retrieve PR author."
-            echo "   - PR number may be incorrect"
-            echo "   - GH_TOKEN may lack permissions"
-            echo "   - Repository may be private"
             exit 1
           fi
   
           echo "✅ PR Author: $PR_USER"
   
-          echo "🔍 Checking if PR author is a collaborator..."
+          echo "🔍 Checking if PR author is a collaborator or member..."
           COLLABORATOR_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" \
             "https://api.github.com/repos/$REPO_NAME/collaborators/$PR_USER")
   
-          if [[ "$COLLABORATOR_STATUS" -eq 204 ]]; then
-            echo "✅ PR author is a collaborator."
-          else
-            echo "🔍 Checking if PR author is a member of the Neural Vision team..."
-            TEAM_MEMBERSHIP=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" \
-              "https://api.github.com/orgs/EduMilestoneDeveloperOrg/teams/neural-vision/memberships/$PR_USER")
+          TEAM_MEMBER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" \
+            "https://api.github.com/orgs/EduMilestoneDeveloperOrg/teams/neural-vision/memberships/$PR_USER")
   
-            if [[ "$TEAM_MEMBERSHIP" -ne 200 ]]; then
-              echo "❌ ERROR: PR author is neither a collaborator nor a Neural Vision team member!"
-              exit 1
-            fi
-  
-            echo "✅ PR author is a Neural Vision team member."
+          if [[ "$COLLABORATOR_STATUS" -ne 204 && "$TEAM_MEMBER_STATUS" -ne 200 ]]; then
+            echo "❌ ERROR: Only repository collaborators or team members can raise pull requests!"
+            exit 1
           fi
   
-          echo "✅ PR is from an authorized collaborator or Neural Vision team member."
+          echo "✅ PR is from an authorized collaborator or team member."
   
           echo "🔍 Checking branch name..."
           PR_BRANCH="${{ github.head_ref }}"
           echo "🔹 PR Branch: $PR_BRANCH"
   
-          # Check if branch name contains the required string
           if [[ ! "$PR_BRANCH" =~ M/M01/PROD_TOOLS/OCR/ ]]; then
             echo "❌ ERROR: Branch name does not meet the required pattern 'M/M01/PROD_TOOLS/OCR/'."
             exit 1
