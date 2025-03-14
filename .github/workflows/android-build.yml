@@ -83,9 +83,6 @@ jobs:
   
           if [[ -z "$PR_USER" || "$PR_USER" == "null" ]]; then
             echo "❌ ERROR: Failed to retrieve PR author."
-            echo "   - PR number may be incorrect"
-            echo "   - GH_TOKEN may lack permissions"
-            echo "   - Repository may be private"
             exit 1
           fi
   
@@ -95,10 +92,15 @@ jobs:
           COLLABORATOR_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" \
             "https://api.github.com/repos/$REPO_NAME/collaborators/$PR_USER")
   
-          TEAM_MEMBER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" \
+          TEAM_MEMBER_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" \
             "https://api.github.com/orgs/EduMilestoneDeveloperOrg/teams/neural-vision/memberships/$PR_USER")
+          TEAM_MEMBER_STATUS=$(echo "$TEAM_MEMBER_RESPONSE" | jq -r '.state')
   
-          if [[ "$COLLABORATOR_STATUS" -ne 204 && "$TEAM_MEMBER_STATUS" -ne 200 ]]; then
+          echo "🔹 Collaborator Status Code: $COLLABORATOR_STATUS"
+          echo "🔹 Team Member Response: $TEAM_MEMBER_RESPONSE"
+          echo "🔹 Team Member Status: $TEAM_MEMBER_STATUS"
+  
+          if [[ "$COLLABORATOR_STATUS" -ne 204 && "$TEAM_MEMBER_STATUS" != "active" ]]; then
             echo "❌ ERROR: Only repository collaborators or team members can raise pull requests!"
             exit 1
           fi
