@@ -150,14 +150,14 @@ jobs:
 
           echo "🔍 Final Step: Checking PR Branch Naming Conventions..."
           echo "🔍 Checking branch name..."
-          PR_BRANCH="${{ github.head_ref }}"
+          PR_BRANCH="${{ github.event.pull_request.head.ref }}"
           echo "🔹 PR Branch: $PR_BRANCH"
   
           # Check if branch name contains the required string
           if [[ ! "$PR_BRANCH" =~ M/M01/PROD_TOOLS/OCR/ ]]; then
             echo "❌ ERROR: Branch name does not meet the required pattern 'M/M01/PROD_TOOLS/OCR/'."
             exit 1
-          fi
+          fi 
           echo "✅ Branch name '$PR_BRANCH' is valid and meets the required pattern."
 
   enforce_pr_description:
