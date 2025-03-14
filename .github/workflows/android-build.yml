@@ -96,8 +96,7 @@ jobs:
           ### MegaLinter Results
           Linter results for the pull request:
 
-          PR Link: [${{ env.PR_LINK }}](${{
- env.PR_LINK }})
+          PR Link: [${{ env.PR_LINK }}](${{env.PR_LINK }})
 
           You can find the full MegaLinter report here: [Linting Report Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for fixing.
 
