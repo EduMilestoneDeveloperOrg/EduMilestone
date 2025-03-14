@@ -49,12 +49,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Fetch full history to avoid shallow clone issues
-  
+    
       - name: 🚀 Run MegaLinter with Autofix (Docker)
         id: linter
         run: |
           docker run \
-            -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
+            -e GITHUB_TOKEN="${{ secrets.GH_MAIN_TOKEN }}" \
             -v ${{ github.workspace }}:/tmp/lint \
             -v /tmp/lint/.cache:/tmp/lint/.cache \
             -w /tmp/lint \
@@ -62,7 +62,7 @@ jobs:
             --fix
           mkdir -p ${{ github.workspace }}/megalinter-report
           cp -r /tmp/lint/report/* ${{ github.workspace }}/megalinter-report
-  
+    
       - name: 💬 Add Lint Review Comments
         if: failure()
         uses: actions/github-script@v4
@@ -115,7 +115,7 @@ jobs:
                 body: 'No Kotlin linter errors found or file not generated.'
               });
             }
-  
+    
       - name: 📄 Upload Linting Error Report
         if: failure()
         uses: actions/upload-artifact@v4
