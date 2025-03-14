@@ -44,7 +44,7 @@ jobs:
   mega-linter:
     runs-on: ubuntu-latest
     permissions:
-      contents: read  # To access the repository contents
+      contents: write  # To access the repository contents
       pull-requests: write  # To comment on PRs
   
     steps:
@@ -72,7 +72,7 @@ jobs:
   
     # Step 5: Upload MegaLinter report as artifact
     - name: Upload MegaLinter report artifact
-      uses: actions/upload-artifact@v2.3.0  # Using v2.3.0 for artifact upload
+      uses: actions/upload-artifact@v4
       with:
         name: megalinter-report
         path: /tmp/lint/report/linters_logs
