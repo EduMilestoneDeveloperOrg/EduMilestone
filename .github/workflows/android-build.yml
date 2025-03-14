@@ -44,7 +44,7 @@ jobs:
   pr_restriction:
     name: 🚧 Enforce PR Restrictions
     # ❌ Prevents workflow execution if triggered by `github-merge-queue`
-    if: github.actor != 'github-merge-queue[bot]' 
+    if: github.actor != 'github-merge-queue[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: ⏳ Delay Before Job Start
@@ -94,12 +94,19 @@ jobs:
           COLLABORATOR_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" \
             "https://api.github.com/repos/$REPO_NAME/collaborators/$PR_USER")
   
+          # 🔥 Added Teams Check Below 🔥
           if [[ "$COLLABORATOR_STATUS" -ne 204 ]]; then
-            echo "❌ ERROR: Only repository collaborators or members can raise pull requests!"
-            exit 1
+            echo "🔍 Checking if PR author is a member of the 'neural-vision' team..."
+            TEAM_MEMBERSHIP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" \
+              "https://api.github.com/orgs/EduMilestoneDeveloperOrg/teams/neural-vision/members/$PR_USER")
+  
+            if [[ "$TEAM_MEMBERSHIP_STATUS" -ne 204 ]]; then
+              echo "❌ ERROR: Only repository collaborators or members of 'neural-vision' team can raise pull requests!"
+              exit 1
+            fi
           fi
   
-          echo "✅ PR is from an authorized collaborator or member."
+          echo "✅ PR is from an authorized collaborator, member, or part of 'neural-vision' team."
   
           echo "🔍 Checking branch name..."
           PR_BRANCH="${{ github.head_ref }}"
