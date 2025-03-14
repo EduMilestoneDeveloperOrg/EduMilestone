@@ -44,7 +44,8 @@ jobs:
 # 1️⃣ Pre-Checks & PR Validation (No dependencies)
   pr_restriction:
     name: 🚧 Enforce PR Restrictions
-    if: github.actor != 'github-merge-queue[bot]'
+    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
+    if: github.actor != 'github-merge-queue[bot]' 
     runs-on: ubuntu-latest
     steps:
       - name: ⏳ Delay Before Job Start
@@ -53,43 +54,51 @@ jobs:
       - name: 🔍 Debug & Verify PR Author and Branch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ORG_NAME: "EduMilestoneDeveloperOrg"
-          TEAM_SLUG: "neural-vision"
+          ORG_NAME: EduMilestoneDeveloperOrg
+          TEAM_SLUG: neural-vision
         run: |
           echo "🔍 Starting PR Debugging..."
           echo "🔹 GitHub Event: ${{ github.event_name }}"
           echo "🔹 Repository: ${{ github.repository }}"
           echo "🔹 Actor: ${{ github.actor }}"
+          echo "🔹 Action: ${{ github.event.action }}"
           echo "🔹 PR Number: ${{ github.event.pull_request.number }}"
           echo "🔹 PR URL: ${{ github.event.pull_request.html_url }}"
-    
+  
           PR_NUMBER="${{ github.event.pull_request.number }}"
           PR_USER="${{ github.actor }}"
           REPO_NAME="${{ github.repository }}"
   
           if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
-            echo "❌ ERROR: Failed to extract PR number."
+            echo "❌ ERROR: PR number is missing or invalid."
             exit 1
           fi
   
-          echo "🔹 PR Author: $PR_USER"
+          echo "🔹 Extracted PR Number: '$PR_NUMBER'"
+          echo "🔹 Repository: $REPO_NAME"
+  
+          echo "🔍 Checking GitHub Token Authentication..."
+          gh auth status || { echo "❌ GH_TOKEN authentication failed!"; exit 1; }
   
           echo "🔍 Checking if PR author is a repository collaborator..."
           COLLABORATOR_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" \
             "https://api.github.com/repos/$REPO_NAME/collaborators/$PR_USER")
   
           if [[ "$COLLABORATOR_STATUS" -eq 204 ]]; then
-            echo "✅ PR is from a valid repository collaborator."
+            echo "✅ PR is from a repository collaborator."
           else
-            echo "🔍 PR author is NOT a direct collaborator. Checking if they are part of the 'Neural Vision' team..."
-            
-            TEAM_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" \
+            echo "🔍 PR author is NOT a direct collaborator. Checking if they are part of the '$TEAM_SLUG' team..."
+            TEAM_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" \
               "https://api.github.com/orgs/$ORG_NAME/teams/$TEAM_SLUG/memberships/$PR_USER")
+            
+            TEAM_STATE=$(echo "$TEAM_RESPONSE" | jq -r '.state')
   
-            if [[ "$TEAM_STATUS" -eq 200 ]]; then
+            echo "🔍 API Response: $TEAM_RESPONSE"  # Debugging Output
+  
+            if [[ "$TEAM_STATE" == "active" ]]; then
               echo "✅ PR is from a valid member of the '$TEAM_SLUG' team."
             else
-              echo "❌ ERROR: Only repository collaborators or members of the '$TEAM_SLUG' team can create PRs!"
+              echo "❌ ERROR: PR author '$PR_USER' is not in the '$TEAM_SLUG' team or lacks membership permissions!"
               exit 1
             fi
           fi
@@ -98,13 +107,13 @@ jobs:
           PR_BRANCH="${{ github.head_ref }}"
           echo "🔹 PR Branch: $PR_BRANCH"
   
-          if [[ "$PR_BRANCH" != M/M01/PROD_TOOLS/OCR/* ]]; then
+          # Check if branch name starts with the required pattern
+          if [[ ! "$PR_BRANCH" =~ ^M/M01/PROD_TOOLS/OCR/ ]]; then
             echo "❌ ERROR: Branch name does not meet the required pattern 'M/M01/PROD_TOOLS/OCR/'."
             exit 1
           fi
   
-          echo "✅ Branch name is valid!"
-          echo "✅ PR is from an authorized collaborator or an active 'Neural Vision' team member."
+          echo "✅ Branch name '$PR_BRANCH' is valid and meets the required pattern."
           echo "🚀 All PR checks passed successfully!"
 
   enforce_pr_description:
