@@ -43,11 +43,11 @@ permissions:
 jobs:
   pr_restriction:
     name: 🚧 Enforce PR Restrictions
-    if: github.actor != 'github-merge-queue[bot]'
+    if: github.actor != 'github-merge-queue[bot]' 
     runs-on: ubuntu-latest
     steps:
       - name: ⏳ Delay Before Job Start
-        run: sleep 3
+        run: sleep 3  # Adds a 3-second delay before execution
   
       - name: 🔍 Debug & Verify PR Author and Branch
         env:
@@ -56,7 +56,7 @@ jobs:
           echo "🔍 Starting PR Debugging..."
           echo "🔹 GitHub Event: ${{ github.event_name }}"
           echo "🔹 Repository: ${{ github.repository }}"
-          echo "🔹 Actor: ${{ github.actor }}"
+          echo "🔹 Actor (PR Author): ${{ github.actor }}"
           echo "🔹 Action: ${{ github.event.action }}"
           echo "🔹 PR Number: ${{ github.event.pull_request.number }}"
           echo "🔹 PR URL: ${{ github.event.pull_request.html_url }}"
@@ -74,61 +74,55 @@ jobs:
           echo "✅ PR Author: $PR_USER"
   
           echo "🔍 Checking GitHub Token Authentication..."
-          gh auth status || { echo "❌ GH_TOKEN authentication failed!"; exit 1; }
+          gh auth status || { echo "❌ ERROR: GitHub authentication failed!"; exit 1; }
   
-          echo "🔍 Checking if PR author is an organization member..."
+          echo "🔍 Step 1️⃣: Checking if PR author is a 'neural-vision' team member..."
+          TEAM_MEMBERS_URL="https://api.github.com/orgs/EduMilestoneDeveloperOrg/teams/neural-vision/members"
+          TEAM_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" "$TEAM_MEMBERS_URL")
+  
+          if echo "$TEAM_RESPONSE" | jq -e .message 2>/dev/null | grep -q "Not Found"; then
+            echo "❌ ERROR: Team 'neural-vision' not found or API access denied."
+            exit 1
+          fi
+  
+          if echo "$TEAM_RESPONSE" | jq -r '.[].login' | grep -q "^$PR_USER$"; then
+            echo "✅ PR Author '$PR_USER' is a member of 'neural-vision'. ✅ PR Approved."
+            exit 0  # ✅ Allow PR
+          fi
+  
+          echo "🔍 Step 2️⃣: Checking if PR author is an Organization Member..."
           ORG_MEMBERSHIP_URL="https://api.github.com/orgs/EduMilestoneDeveloperOrg/members/$PR_USER"
           ORG_MEMBER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" "$ORG_MEMBERSHIP_URL")
   
           if [[ "$ORG_MEMBER_STATUS" -eq 204 ]]; then
-            echo "✅ PR Author '$PR_USER' is an Org Member. No further checks required."
-          else
-            echo "🔍 PR Author is NOT an Org Member. Checking if they are a 'neural-vision' team member..."
-  
-            # Fetch team members
-            TEAM_MEMBERS_URL="https://api.github.com/orgs/EduMilestoneDeveloperOrg/teams/neural-vision/members"
-            TEAM_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" "$TEAM_MEMBERS_URL")
-  
-            if echo "$TEAM_RESPONSE" | jq -e .message 2>/dev/null | grep -q "Not Found"; then
-              echo "❌ ERROR: Team 'neural-vision' not found or access denied."
-              exit 1
-            fi
-  
-            TEAM_MEMBERS=$(echo "$TEAM_RESPONSE" | jq -r '.[].login')
-            echo "🔹 Retrieved Team Members List:"
-            echo "$TEAM_MEMBERS"
-  
-            if echo "$TEAM_MEMBERS" | grep -q "^$PR_USER$"; then
-              echo "✅ PR Author '$PR_USER' is a member of 'neural-vision'."
-            else
-              echo "🔍 PR Author is NOT in 'neural-vision'. Checking if they are an Outside Collaborator..."
-  
-              OUTSIDE_COLLAB_URL="https://api.github.com/repos/$REPO_NAME/outside_collaborators"
-              OUTSIDE_COLLAB_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" "$OUTSIDE_COLLAB_URL")
-  
-              OUTSIDE_COLLABORATORS=$(echo "$OUTSIDE_COLLAB_RESPONSE" | jq -r '.[].login')
-              echo "🔹 Retrieved Outside Collaborators List:"
-              echo "$OUTSIDE_COLLABORATORS"
-  
-              if echo "$OUTSIDE_COLLABORATORS" | grep -q "^$PR_USER$"; then
-                echo "✅ PR Author '$PR_USER' is an Outside Collaborator."
-              else
-                echo "❌ ERROR: PR Author '$PR_USER' is NOT an Org Member, NOT a Neural Team Member, and NOT an Outside Collaborator. PR is blocked!"
-                exit 1
-              fi
-            fi
+            echo "✅ PR Author '$PR_USER' is an Organization Member. ✅ PR Approved."
+            exit 0  # ✅ Allow PR
           fi
   
-          echo "🔍 Checking branch name..."
+          echo "🔍 Step 3️⃣: Checking if PR author is an Outside Collaborator..."
+          OUTSIDE_COLLAB_URL="https://api.github.com/repos/$REPO_NAME/outside_collaborators"
+          OUTSIDE_COLLAB_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" "$OUTSIDE_COLLAB_URL")
+  
+          if echo "$OUTSIDE_COLLAB_RESPONSE" | jq -r '.[].login' | grep -q "^$PR_USER$"; then
+            echo "✅ PR Author '$PR_USER' is an Outside Collaborator. ✅ PR Approved."
+          else
+            echo "❌ ERROR: PR Author '$PR_USER' is NOT authorized."
+            echo "🔹 They are NOT a member of 'neural-vision'."
+            echo "🔹 They are NOT an Organization Member."
+            echo "🔹 They are NOT an Outside Collaborator."
+            echo "❌ Blocking PR."
+            exit 1  # ❌ Block PR
+          fi
+  
+          echo "🔍 Final Step: Checking PR Branch Naming Conventions..."
           echo "🔹 PR Branch: $PR_BRANCH"
   
-          # Enforce a specific naming pattern for branches
           if [[ ! "$PR_BRANCH" =~ M/M01/PROD_TOOLS/OCR/ ]]; then
             echo "❌ ERROR: Branch name does not meet the required pattern 'M/M01/PROD_TOOLS/OCR/'."
             exit 1
           fi
   
-          echo "✅ Branch name '$PR_BRANCH' is valid."
+          echo "✅ Branch name '$PR_BRANCH' is valid. ✅ PR Approved."
 
   enforce_pr_description:
     name: 📜 Enforce PR Description
