@@ -44,86 +44,65 @@ jobs:
 # 1️⃣ Pre-Checks & PR Validation (No dependencies)
   pr_restriction:
     name: 🚧 Enforce PR Restrictions
-    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
-    if: github.actor != 'github-merge-queue[bot]' 
+    if: github.actor != 'github-merge-queue[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: ⏳ Delay Before Job Start
         run: sleep 3  # Adds a 3-second delay before execution
-        
+  
       - name: 🔍 Debug & Verify PR Author and Branch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ORG_NAME: "EduMilestoneDeveloperOrg"
+          TEAM_SLUG: "neural-vision"
         run: |
           echo "🔍 Starting PR Debugging..."
           echo "🔹 GitHub Event: ${{ github.event_name }}"
           echo "🔹 Repository: ${{ github.repository }}"
           echo "🔹 Actor: ${{ github.actor }}"
-          echo "🔹 Action: ${{ github.event.action }}"
           echo "🔹 PR Number: ${{ github.event.pull_request.number }}"
           echo "🔹 PR URL: ${{ github.event.pull_request.html_url }}"
-  
-          echo "🔍 Extracting PR Number..."
+    
           PR_NUMBER="${{ github.event.pull_request.number }}"
+          PR_USER="${{ github.actor }}"
           REPO_NAME="${{ github.repository }}"
-          ORG_NAME="EduMilestoneDeveloperOrg"
-          TEAM_SLUG="neural-vision"
   
           if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
-            echo "❌ ERROR: PR number is missing or invalid."
+            echo "❌ ERROR: Failed to extract PR number."
             exit 1
           fi
   
-          echo "🔹 Extracted PR Number: '$PR_NUMBER'"
-          echo "🔹 Repository: $REPO_NAME"
+          echo "🔹 PR Author: $PR_USER"
   
-          echo "🔍 Checking GitHub Token Authentication..."
-          gh auth status || { echo "❌ GH_TOKEN authentication failed!"; exit 1; }
-  
-          echo "🔍 Fetching PR Author..."
-          PR_USER=$(curl -s -H "Authorization: token $GH_TOKEN" \
-            "https://api.github.com/repos/$REPO_NAME/pulls/$PR_NUMBER" | jq -r '.user.login')
-  
-          if [[ -z "$PR_USER" || "$PR_USER" == "null" ]]; then
-            echo "❌ ERROR: Failed to retrieve PR author."
-            echo "   - PR number may be incorrect"
-            echo "   - GH_TOKEN may lack permissions"
-            echo "   - Repository may be private"
-            exit 1
-          fi
-  
-          echo "✅ PR Author: $PR_USER"
-  
-          echo "🔍 Checking if PR author is a collaborator..."
+          echo "🔍 Checking if PR author is a repository collaborator..."
           COLLABORATOR_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" \
             "https://api.github.com/repos/$REPO_NAME/collaborators/$PR_USER")
   
-          if [[ "$COLLABORATOR_STATUS" -ne 204 ]]; then
-            echo "🔍 PR author is NOT a direct collaborator. Checking if they are part of 'Neural Vision' team..."
-  
-            TEAM_SLUG="neural-vision"
+          if [[ "$COLLABORATOR_STATUS" -eq 204 ]]; then
+            echo "✅ PR is from a valid repository collaborator."
+          else
+            echo "🔍 PR author is NOT a direct collaborator. Checking if they are part of the 'Neural Vision' team..."
+            
             TEAM_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" \
-              "https://api.github.com/orgs/EduMilestoneDeveloperOrg/teams/$TEAM_SLUG/members/$PR_USER")
+              "https://api.github.com/orgs/$ORG_NAME/teams/$TEAM_SLUG/memberships/$PR_USER")
   
-            if [[ "$TEAM_SLUG" -ne 204 ]]; then
+            if [[ "$TEAM_STATUS" -eq 200 ]]; then
+              echo "✅ PR is from a valid member of the '$TEAM_SLUG' team."
+            else
               echo "❌ ERROR: Only repository collaborators or members of the '$TEAM_SLUG' team can create PRs!"
               exit 1
-            else
-              echo "✅ PR author is a member of the '$TEAM_SLUG' team."
             fi
-          else
-            echo "✅ PR is from a valid repository collaborator."
           fi
   
           echo "🔍 Checking branch name..."
           PR_BRANCH="${{ github.head_ref }}"
           echo "🔹 PR Branch: $PR_BRANCH"
   
-          # Check if branch name contains the required string
           if [[ "$PR_BRANCH" != M/M01/PROD_TOOLS/OCR/* ]]; then
             echo "❌ ERROR: Branch name does not meet the required pattern 'M/M01/PROD_TOOLS/OCR/'."
             exit 1
           fi
+  
           echo "✅ Branch name is valid!"
           echo "✅ PR is from an authorized collaborator or an active 'Neural Vision' team member."
           echo "🚀 All PR checks passed successfully!"
