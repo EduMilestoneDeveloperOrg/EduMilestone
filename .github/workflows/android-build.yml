@@ -58,7 +58,9 @@ jobs:
     - name: Run MegaLinter on PR changes
       run: |
         docker pull megalinter/megalinter:latest
-        docker run --rm -v $(pwd):/mnt/mega-linter megalinter/megalinter:latest --run --ci --disable=all --workspace /mnt/mega-linter --changed
+        docker run --rm \
+          -v /github/workspace:/mnt/mega-linter \
+          megalinter/megalinter:latest --run --ci --disable=all --workspace /mnt/mega-linter --changed
 
     # Step 3: Upload MegaLinter report as an artifact
     - name: Upload MegaLinter report artifact
