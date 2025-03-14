@@ -103,26 +103,32 @@ jobs:
           OUTSIDE_COLLAB_URL="https://api.github.com/repos/$REPO_NAME/outside_collaborators"
           OUTSIDE_COLLAB_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" "$OUTSIDE_COLLAB_URL")
           
-          # Check if the response is valid JSON
-          if echo "$OUTSIDE_COLLAB_RESPONSE" | jq empty > /dev/null 2>&1; then
-              echo "🔹 Retrieved Outside Collaborators:"
-              echo "$OUTSIDE_COLLAB_RESPONSE" | jq -r '.[].login' || echo "⚠️ No outside collaborators found."
-          else
-              echo "❌ ERROR: Failed to fetch outside collaborators or the response is invalid."
+          # Check if the response is empty or invalid
+          if [ -z "$OUTSIDE_COLLAB_RESPONSE" ]; then
+              echo "❌ ERROR: No response or empty response from Outside Collaborators API."
               exit 1
           fi
           
-          if echo "$OUTSIDE_COLLAB_RESPONSE" | jq -r '.[].login' | grep -q "^$PR_USER$"; then
-              echo "✅ PR Author '$PR_USER' is an Outside Collaborator. ✅ PR Check PASS."
-              exit 0  # ✅ Fixed: Explicitly exit if PR author is an outside collaborator
+          # Check if the response is valid JSON
+          if echo "$OUTSIDE_COLLAB_RESPONSE" | jq empty > /dev/null 2>&1; then
+              echo "🔹 Retrieved Outside Collaborators:"
+              # Check if the PR author is in the list of outside collaborators
+              if echo "$OUTSIDE_COLLAB_RESPONSE" | jq -r '.[].login' | grep -q "^$PR_USER$"; then
+                  echo "✅ PR Author '$PR_USER' is an Outside Collaborator. ✅ PR Check PASS."
+                  exit 0  # ✅ Allow PR if the author is an outside collaborator
+              else
+                  echo "❌ ERROR: PR Author '$PR_USER' is NOT an Outside Collaborator."
+                  echo "🔹 They are NOT a member of 'neural-vision'."
+                  echo "🔹 They are NOT an Organization Member."
+                  echo "🔹 They are NOT an Outside Collaborator."
+                  echo "❌ Blocking PR."
+                  exit 1  # ❌ Block PR if the author is not an outside collaborator
+              fi
           else
-              echo "❌ ERROR: PR Author '$PR_USER' is NOT authorized."
-              echo "🔹 They are NOT a member of 'neural-vision'."
-              echo "🔹 They are NOT an Organization Member."
-              echo "🔹 They are NOT an Outside Collaborator."
-              echo "❌ Blocking PR."
-              exit 1  # ❌ Block PR
+              echo "❌ ERROR: Failed to fetch valid JSON for outside collaborators."
+              exit 1
           fi
+
 
   enforce_pr_description:
     name: 📜 Enforce PR Description
