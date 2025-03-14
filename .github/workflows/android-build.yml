@@ -99,7 +99,7 @@ jobs:
           fi 
           echo "✅ Branch name '$PR_BRANCH' is valid and meets the required pattern."
           
-          echo "🔍 Step  4️⃣: Checking if PR author is an Outside Collaborator..."
+          echo "🔍 Step 4️⃣: Checking if PR author is an Outside Collaborator..."
           OUTSIDE_COLLAB_URL="https://api.github.com/repos/$REPO_NAME/outside_collaborators"
           OUTSIDE_COLLAB_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" "$OUTSIDE_COLLAB_URL")
           
@@ -116,8 +116,9 @@ jobs:
           # Check if we received a 404 response (Not Found)
           if echo "$OUTSIDE_COLLAB_RESPONSE" | jq -e '.message == "Not Found"' > /dev/null; then
               echo "⚠️ No outside collaborators found or the endpoint is invalid."
-              # You can either continue or exit based on your requirement
-              exit 0  # Exit gracefully as no collaborators exist
+              # Explicitly block the PR if no collaborators are found
+              echo "❌ Blocking PR because no outside collaborators exist or the endpoint is invalid."
+              exit 1  # Block PR if no outside collaborators are found
           fi
           
           # Check if the response is valid JSON
@@ -146,6 +147,7 @@ jobs:
               echo "❌ ERROR: Failed to fetch valid JSON for outside collaborators."
               exit 1
           fi
+
 
 
   enforce_pr_description:
