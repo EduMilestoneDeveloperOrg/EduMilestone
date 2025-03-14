@@ -86,21 +86,18 @@ jobs:
             echo "   - Repository may be private"
             exit 1
           fi
-          echo "🔍 Step 2️⃣: Checking if PR author '$PR_USER' is an Organization Member or Repository Collaborator..."
-            
-          # ✅ Check if the PR author is an Organization Member
-          ORG_MEMBERS_URL="https://api.github.com/orgs/EduMilestoneDeveloperOrg/members"
-          ORG_MEMBERS_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" "$ORG_MEMBERS_URL")
-          # Extract organization members and log them
-          ORG_MEMBERS=$(echo "$ORG_MEMBERS_RESPONSE" | jq -r '.[].login')
-          echo "🔹 Retrieved Organization Members:"
-          echo "$ORG_MEMBERS" || echo "⚠️ No organization members found."
-
-          if echo "$ORG_MEMBERS" | grep -q "^$PR_USER$"; then
-              echo "✅ PR Author '$PR_USER' is an **Organization Member**. PR is allowed."
-              exit 0
-          fi
-
+          
+          echo "🔍 Final Step: Checking PR Branch Naming Conventions..."
+          echo "🔍 Checking branch name..."
+          PR_BRANCH="${{ github.event.pull_request.head.ref }}"
+          echo "🔹 PR Branch: $PR_BRANCH"
+  
+          # Check if branch name contains the required string
+          if [[ ! "$PR_BRANCH" =~ M/M01/PROD_TOOLS/OCR/ ]]; then
+            echo "❌ ERROR: Branch name does not meet the required pattern 'M/M01/PROD_TOOLS/OCR/'."
+            exit 1
+          fi 
+          echo "✅ Branch name '$PR_BRANCH' is valid and meets the required pattern."
           # ✅ Check if the PR author is a repository collaborator
           echo "🔍 Step 3️⃣: Checking if PR author '$PR_USER' is a **Repository Collaborator**..."
 
@@ -138,18 +135,6 @@ jobs:
             echo "❌ Blocking PR."
             exit 1  # ❌ Block PR
           fi
-
-          echo "🔍 Final Step: Checking PR Branch Naming Conventions..."
-          echo "🔍 Checking branch name..."
-          PR_BRANCH="${{ github.event.pull_request.head.ref }}"
-          echo "🔹 PR Branch: $PR_BRANCH"
-  
-          # Check if branch name contains the required string
-          if [[ ! "$PR_BRANCH" =~ M/M01/PROD_TOOLS/OCR/ ]]; then
-            echo "❌ ERROR: Branch name does not meet the required pattern 'M/M01/PROD_TOOLS/OCR/'."
-            exit 1
-          fi 
-          echo "✅ Branch name '$PR_BRANCH' is valid and meets the required pattern."
 
   enforce_pr_description:
     name: 📜 Enforce PR Description
