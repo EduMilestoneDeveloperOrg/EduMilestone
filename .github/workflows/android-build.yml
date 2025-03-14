@@ -50,12 +50,9 @@ jobs:
     steps:
       - name: ⏳ Delay Before Job Start
         run: sleep 3  # Adds a 3-second delay before execution
-  
       - name: 🔍 Debug & Verify PR Author and Branch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ORG_NAME: EduMilestoneDeveloperOrg
-          TEAM_SLUG: neural-vision
         run: |
           echo "🔍 Starting PR Debugging..."
           echo "🔹 GitHub Event: ${{ github.event_name }}"
@@ -65,8 +62,8 @@ jobs:
           echo "🔹 PR Number: ${{ github.event.pull_request.number }}"
           echo "🔹 PR URL: ${{ github.event.pull_request.html_url }}"
   
+          echo "🔍 Extracting PR Number..."
           PR_NUMBER="${{ github.event.pull_request.number }}"
-          PR_USER="${{ github.actor }}"
           REPO_NAME="${{ github.repository }}"
   
           if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
@@ -80,41 +77,52 @@ jobs:
           echo "🔍 Checking GitHub Token Authentication..."
           gh auth status || { echo "❌ GH_TOKEN authentication failed!"; exit 1; }
   
-          echo "🔍 Checking if PR author is a repository collaborator..."
+          echo "🔍 Fetching PR Author..."
+          PR_USER=$(curl -s -H "Authorization: token $GH_TOKEN" \
+            "https://api.github.com/repos/$REPO_NAME/pulls/$PR_NUMBER" | jq -r '.user.login')
+  
+          if [[ -z "$PR_USER" || "$PR_USER" == "null" ]]; then
+            echo "❌ ERROR: Failed to retrieve PR author."
+            echo "   - PR number may be incorrect"
+            echo "   - GH_TOKEN may lack permissions"
+            echo "   - Repository may be private"
+            exit 1
+          fi
+  
+          echo "✅ PR Author: $PR_USER"
+  
+          echo "🔍 Checking if PR author is a collaborator..."
           COLLABORATOR_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" \
             "https://api.github.com/repos/$REPO_NAME/collaborators/$PR_USER")
   
           if [[ "$COLLABORATOR_STATUS" -eq 204 ]]; then
-            echo "✅ PR is from a repository collaborator."
+            echo "✅ PR author is a collaborator."
           else
-            echo "🔍 PR author is NOT a direct collaborator. Checking if they are part of the '$TEAM_SLUG' team..."
-            TEAM_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" \
-              "https://api.github.com/orgs/$ORG_NAME/teams/$TEAM_SLUG/memberships/$PR_USER")
-            
-            TEAM_STATE=$(echo "$TEAM_RESPONSE" | jq -r '.state')
+            echo "🔍 Checking if PR author is a member of the Neural Vision team..."
+            TEAM_MEMBERSHIP=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" \
+              "https://api.github.com/orgs/EduMilestoneDeveloperOrg/teams/neural-vision/memberships/$PR_USER")
   
-            echo "🔍 API Response: $TEAM_RESPONSE"  # Debugging Output
-  
-            if [[ "$TEAM_STATE" == "active" ]]; then
-              echo "✅ PR is from a valid member of the '$TEAM_SLUG' team."
-            else
-              echo "❌ ERROR: PR author '$PR_USER' is not in the '$TEAM_SLUG' team or lacks membership permissions!"
+            if [[ "$TEAM_MEMBERSHIP" -ne 200 ]]; then
+              echo "❌ ERROR: PR author is neither a collaborator nor a Neural Vision team member!"
               exit 1
             fi
+  
+            echo "✅ PR author is a Neural Vision team member."
           fi
+  
+          echo "✅ PR is from an authorized collaborator or Neural Vision team member."
   
           echo "🔍 Checking branch name..."
           PR_BRANCH="${{ github.head_ref }}"
           echo "🔹 PR Branch: $PR_BRANCH"
   
-          # Check if branch name starts with the required pattern
-          if [[ ! "$PR_BRANCH" =~ ^M/M01/PROD_TOOLS/OCR/ ]]; then
+          # Check if branch name contains the required string
+          if [[ ! "$PR_BRANCH" =~ M/M01/PROD_TOOLS/OCR/ ]]; then
             echo "❌ ERROR: Branch name does not meet the required pattern 'M/M01/PROD_TOOLS/OCR/'."
             exit 1
           fi
   
           echo "✅ Branch name '$PR_BRANCH' is valid and meets the required pattern."
-          echo "🚀 All PR checks passed successfully!"
 
   enforce_pr_description:
     name: 📜 Enforce PR Description
