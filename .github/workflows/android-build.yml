@@ -38,7 +38,6 @@ permissions:
   security-events: write  # Required for CodeQL scanning
   actions: write
   statuses: write
-  organization-membership: read
   id-token: write
 
 jobs:
