@@ -99,24 +99,6 @@ jobs:
           fi 
           echo "✅ Branch name '$PR_BRANCH' is valid and meets the required pattern."
           # ✅ Check if the PR author is a repository collaborator
-          echo "🔍 Step 3️⃣: Checking if PR author '$PR_USER' is a **Repository Collaborator**..."
-
-          # Fetch the repository collaborators
-          COLLABORATORS_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" "https://api.github.com/repos/$REPO_NAME/collaborators")
-          echo "🔹 Retrieved Repository Collaborators:"
-          echo "$COLLABORATORS_RESPONSE" | jq -r '.[].login' || echo "⚠️ No collaborators found."
-
-          # Check if the PR author is in the list of collaborators
-          COLLABORATOR_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" \
-              "https://api.github.com/repos/$REPO_NAME/collaborators/$PR_USER")
-
-          if [[ "$COLLABORATOR_STATUS" -eq 204 ]]; then
-            echo "✅ PR Author '$PR_USER' is a Repository Collaborator. ✅ PR is allowed."
-            exit 0
-          else
-            echo "❌ PR Author '$PR_USER' is NOT a Repository Collaborator. 🚫 PR is blocked."
-            exit 1
-          fi
           echo "🔍 Step  4️⃣: Checking if PR author is an Outside Collaborator..."
           OUTSIDE_COLLAB_URL="https://api.github.com/repos/$REPO_NAME/outside_collaborators"
           OUTSIDE_COLLAB_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" "$OUTSIDE_COLLAB_URL")
