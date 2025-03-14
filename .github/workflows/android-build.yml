@@ -69,12 +69,21 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const lintResults = fs.readFileSync('${{ github.workspace }}/megalinter-report/linters_logs/ERROR-KOTLIN_KTLINT.log', 'utf8');
-            github.issues.createComment({
-              ...github.context.repo,
-              issue_number: github.context.issue.number,
-              body: `Linting issues detected:\n\`\`\`${lintResults}\`\`\``
-            });
+            const path = '${{ github.workspace }}/megalinter-report/linters_logs/ERROR-KOTLIN_KTLINT.log';
+            if (fs.existsSync(path)) {
+              const lintResults = fs.readFileSync(path, 'utf8');
+              github.issues.createComment({
+                ...github.context.repo,
+                issue_number: github.context.issue.number,
+                body: `Linting issues detected:\n\`\`\`${lintResults}\`\`\``
+              });
+            } else {
+              github.issues.createComment({
+                ...github.context.repo,
+                issue_number: github.context.issue.number,
+                body: 'No Kotlin linter errors found or file not generated.'
+              });
+            }
   
       - name: ✅ Re-check Linting
         if: failure()
@@ -82,19 +91,28 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const lintResults = fs.readFileSync('${{ github.workspace }}/megalinter-report/linters_logs/ERROR-KOTLIN_KTLINT.log', 'utf8');
-            if (!lintResults.trim()) {
-              github.pulls.createReview({
-                ...github.context.repo,
-                pull_number: github.context.issue.number,
-                event: 'APPROVE',
-                body: 'Linting issues resolved. Approved.'
-              });
+            const path = '${{ github.workspace }}/megalinter-report/linters_logs/ERROR-KOTLIN_KTLINT.log';
+            if (fs.existsSync(path)) {
+              const lintResults = fs.readFileSync(path, 'utf8');
+              if (!lintResults.trim()) {
+                github.pulls.createReview({
+                  ...github.context.repo,
+                  pull_number: github.context.issue.number,
+                  event: 'APPROVE',
+                  body: 'Linting issues resolved. Approved.'
+                });
+              } else {
+                github.issues.createComment({
+                  ...github.context.repo,
+                  issue_number: github.context.issue.number,
+                  body: `Linting issues still detected:\n\`\`\`${lintResults}\`\`\``
+                });
+              }
             } else {
               github.issues.createComment({
                 ...github.context.repo,
                 issue_number: github.context.issue.number,
-                body: `Linting issues still detected:\n\`\`\`${lintResults}\`\`\``
+                body: 'No Kotlin linter errors found or file not generated.'
               });
             }
   
