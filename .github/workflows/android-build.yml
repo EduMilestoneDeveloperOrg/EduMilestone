@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: ⏳ Delay Before Job Start
-        run: sleep 3  # Adds a 3-second delay before execution
+        run: sleep 3  # Adds a short delay before execution
   
       - name: 🔍 Debug & Verify PR Author and Branch
         env:
@@ -85,16 +85,22 @@ jobs:
             exit 1
           fi
   
+          echo "🔹 Retrieved Team Members:"
+          echo "$TEAM_RESPONSE" | jq -r '.[].login' || echo "⚠️ No team members found."
+  
           if echo "$TEAM_RESPONSE" | jq -r '.[].login' | grep -q "^$PR_USER$"; then
             echo "✅ PR Author '$PR_USER' is a member of 'neural-vision'. ✅ PR Approved."
             exit 0  # ✅ Allow PR
           fi
   
           echo "🔍 Step 2️⃣: Checking if PR author is an Organization Member..."
-          ORG_MEMBERSHIP_URL="https://api.github.com/orgs/EduMilestoneDeveloperOrg/members/$PR_USER"
-          ORG_MEMBER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" "$ORG_MEMBERSHIP_URL")
+          ORG_MEMBERS_URL="https://api.github.com/orgs/EduMilestoneDeveloperOrg/members"
+          ORG_MEMBERS_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" "$ORG_MEMBERS_URL")
   
-          if [[ "$ORG_MEMBER_STATUS" -eq 204 ]]; then
+          echo "🔹 Retrieved Organization Members:"
+          echo "$ORG_MEMBERS_RESPONSE" | jq -r '.[].login' || echo "⚠️ No organization members found."
+  
+          if echo "$ORG_MEMBERS_RESPONSE" | jq -r '.[].login' | grep -q "^$PR_USER$"; then
             echo "✅ PR Author '$PR_USER' is an Organization Member. ✅ PR Approved."
             exit 0  # ✅ Allow PR
           fi
@@ -102,6 +108,9 @@ jobs:
           echo "🔍 Step 3️⃣: Checking if PR author is an Outside Collaborator..."
           OUTSIDE_COLLAB_URL="https://api.github.com/repos/$REPO_NAME/outside_collaborators"
           OUTSIDE_COLLAB_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" "$OUTSIDE_COLLAB_URL")
+  
+          echo "🔹 Retrieved Outside Collaborators:"
+          echo "$OUTSIDE_COLLAB_RESPONSE" | jq -r '.[].login' || echo "⚠️ No outside collaborators found."
   
           if echo "$OUTSIDE_COLLAB_RESPONSE" | jq -r '.[].login' | grep -q "^$PR_USER$"; then
             echo "✅ PR Author '$PR_USER' is an Outside Collaborator. ✅ PR Approved."
