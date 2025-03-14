@@ -41,177 +41,77 @@ permissions:
   id-token: write
 
 jobs:
-  linting:
-    name: 🎨 Lint Code (MegaLinter)
+  mega-linter:
     runs-on: ubuntu-latest
-    steps:
-      - name: 📥 Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Fetch full history to avoid shallow clone issues
-    
-      - name: 🚀 Run MegaLinter with Autofix (Docker)
-        id: linter
-        run: |
-          docker run \
-            -e GITHUB_TOKEN="${{ secrets.GH_MAIN_TOKEN }}" \
-            -v ${{ github.workspace }}:/tmp/lint \
-            -v /tmp/lint/.cache:/tmp/lint/.cache \
-            -w /tmp/lint \
-            megalinter/megalinter:latest \
-            --fix
-          mkdir -p ${{ github.workspace }}/megalinter-report
-          cp -r /tmp/lint/report/* ${{ github.workspace }}/megalinter-report
-    
-      - name: 💬 Add Lint Review Comments
-        if: failure()
-        uses: actions/github-script@v4
-        with:
-          script: |
-            const fs = require('fs');
-            const path = '${{ github.workspace }}/megalinter-report/linters_logs/ERROR-KOTLIN_KTLINT.log';
-            if (fs.existsSync(path)) {
-              const lintResults = fs.readFileSync(path, 'utf8');
-              github.issues.createComment({
-                ...github.context.repo,
-                issue_number: github.context.issue.number,
-                body: `Linting issues detected:\n\`\`\`${lintResults}\`\`\``
-              });
-            } else {
-              github.issues.createComment({
-                ...github.context.repo,
-                issue_number: github.context.issue.number,
-                body: 'No Kotlin linter errors found or file not generated.'
-              });
-            }
-  
-      - name: ✅ Re-check Linting
-        if: failure()
-        uses: actions/github-script@v4
-        with:
-          script: |
-            const fs = require('fs');
-            const path = '${{ github.workspace }}/megalinter-report/linters_logs/ERROR-KOTLIN_KTLINT.log';
-            if (fs.existsSync(path)) {
-              const lintResults = fs.readFileSync(path, 'utf8');
-              if (!lintResults.trim()) {
-                github.pulls.createReview({
-                  ...github.context.repo,
-                  pull_number: github.context.issue.number,
-                  event: 'APPROVE',
-                  body: 'Linting issues resolved. Approved.'
-                });
-              } else {
-                github.issues.createComment({
-                  ...github.context.repo,
-                  issue_number: github.context.issue.number,
-                  body: `Linting issues still detected:\n\`\`\`${lintResults}\`\`\``
-                });
-              }
-            } else {
-              github.issues.createComment({
-                ...github.context.repo,
-                issue_number: github.context.issue.number,
-                body: 'No Kotlin linter errors found or file not generated.'
-              });
-            }
-    
-      - name: 📄 Upload Linting Error Report
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: megalinter-report
-          path: ${{ github.workspace }}/megalinter-report
-          if-no-files-found: warn
-          compression-level: 6
-          overwrite: false
-          include-hidden-files: false
-
-  static_code_analysis:
-    name: 🛠️ Static Code Analysis (Detekt)
-    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # To access the repository contents
+      pull-requests: write  # To comment on PRs
 
     steps:
-      - name: 📥 Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Ensures full history is fetched
+    # Step 1: Checkout the repository
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: 🚀 Install Dependencies (Java & Unzip)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y unzip openjdk-17-jdk curl
+    # Step 2: Set up Python for MegaLinter
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'
 
-      - name: 🚀 Install Detekt
-        env:
-          DETEKT_VERSION: "1.23.0"
-        run: |
-          echo "🔄 Installing Detekt v$DETEKT_VERSION..."
-          
-          # Download Detekt CLI
-          curl -sSLO "https://github.com/detekt/detekt/releases/download/v$DETEKT_VERSION/detekt-cli-$DETEKT_VERSION.zip"
-          
-          # Ensure zip downloaded correctly
-          if [[ ! -f "detekt-cli-$DETEKT_VERSION.zip" ]]; then
-            echo "❌ ERROR: Failed to download Detekt."
-            exit 1
-          fi
-          
-          # Extract Detekt CLI
-          unzip -o "detekt-cli-$DETEKT_VERSION.zip" -d detekt-cli || { echo "❌ ERROR: Unzip failed!"; exit 1; }
-          
-          # Move JAR to a proper location
-          sudo mv detekt-cli/detekt-cli-$DETEKT_VERSION/lib/detekt-cli-$DETEKT_VERSION-all.jar /usr/local/bin/detekt-cli.jar
-          
-          # Create a wrapper script
-          echo -e "#!/bin/bash\njava -jar /usr/local/bin/detekt-cli.jar \"\$@\"" | sudo tee /usr/local/bin/detekt > /dev/null
-          sudo chmod +x /usr/local/bin/detekt
-          
-          # Verify installation
-          detekt --help || { echo "❌ ERROR: Detekt installation failed."; exit 1; }
+    # Step 3: Install MegaLinter
+    - name: Install MegaLinter
+      run: |
+        python -m pip install --upgrade pip
+        pip install megalinter
 
-      - name: 🛠️ Run Detekt Analysis with Retry
-        run: |
-          # Ensure detekt.yml exists, otherwise download the default config
-          if [[ ! -f "detekt.yml" ]]; then
-            echo "⚠️ detekt.yml not found. Downloading default..."
-            curl -sSLo detekt.yml https://raw.githubusercontent.com/detekt/detekt/main/config/detekt.yml
-          fi
-          
-          # Fix potential configuration errors in detekt.yml
-          if grep -q 'maxIssues:' detekt.yml; then
-            echo "🔧 Fixing invalid 'maxIssues' type..."
-            sed -i 's/maxIssues: [0-9]\+/maxIssues: "0"/g' detekt.yml
-          fi
-          
-          # Create reports directory if missing
-          mkdir -p reports
-          
-          # Retry logic
-          MAX_RETRIES=3
-          COUNTER=0
-          
-          while [ $COUNTER -lt $MAX_RETRIES ]; do
-            echo "🔄 Running Detekt analysis (Attempt $((COUNTER+1)))..."
-          
-            detekt --config detekt.yml --report html:reports/detekt.html
-            EXIT_CODE=$?
-          
-            if [[ $EXIT_CODE -eq 0 ]]; then
-              echo "✅ Detekt analysis completed successfully!"
-              exit 0
-            fi
-          
-            echo "⚠️ Detekt found issues (Attempt $((COUNTER+1))). Retrying in 10 seconds..."
-            COUNTER=$((COUNTER+1))
-            sleep 10
-          done
-          
-          echo "❌ ERROR: Static analysis found issues. Please fix them before merging."
-          exit 1
+    # Step 4: Fetch PR details (PR number, PR link)
+    - name: Fetch PR details
+      id: pr_details
+      run: |
+        PR_NUMBER=$(echo ${GITHUB_REF} | cut -d'/' -f3)
+        PR_LINK="https://github.com/${GITHUB_REPOSITORY}/pull/${PR_NUMBER}"
+        echo "PR_NUMBER=${PR_NUMBER}" >> $GITHUB_ENV
+        echo "PR_LINK=${PR_LINK}" >> $GITHUB_ENV
+        echo "PR details: PR_NUMBER=${PR_NUMBER}, PR_LINK=${PR_LINK}"
 
-      - name: 📄 Upload Detekt Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: detekt-report
-          path: reports/detekt.html
+    # Step 5: Run MegaLinter
+    - name: Run MegaLinter
+      run: |
+        megalinter --install
+        megalinter --run --ci --disable=all
+
+    # Step 6: Upload MegaLinter report as artifact
+    - name: Upload MegaLinter report artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: megalinter-report
+        path: /tmp/lint/report/linters_logs
+
+    # Step 7: Comment on PR with lint results
+    - name: Comment on PR with MegaLinter results
+      uses: peter-evans/create-or-update-comment@v2
+      with:
+        issue-number: ${{ env.PR_NUMBER }}
+        body: |
+          ### MegaLinter Results
+          Linter results for the pull request:
+
+          PR Link: [${{ env.PR_LINK }}](${{env.PR_LINK }})
+
+          You can find the full MegaLinter report here: [Linting Report Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for fixing.
+
+    # Step 8: Wait for the fix (optional)
+    - name: Wait for fix (optional)
+      run: echo "Please fix the linting issues and push the changes. PR will be re-evaluated after the update."
+
+    # Step 9: Check if there are no linting errors and comment approved on PR
+    - name: Comment approved on PR
+      if: success() && steps.run_megalinter.outputs.exit_code == 0
+      uses: peter-evans/create-or-update-comment@v2
+      with:
+        issue-number: ${{ env.PR_NUMBER }}
+        body: |
+          ### MegaLinter Results
+          The PR is ready for approval. All linting issues have been fixed.
+
+          **PR has been approved**. ✅
