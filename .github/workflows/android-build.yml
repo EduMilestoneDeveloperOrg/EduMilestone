@@ -42,8 +42,8 @@ permissions:
 
 jobs:
   pr_restriction:
-    name: 🚧 Enforce PR Restrictions
-    if: github.actor != 'github-merge-queue[bot]' 
+    name: "🚧 Enforce PR Restrictions"
+    if: github.actor != 'github-merge-queue[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: ⏳ Delay Before Job Start
@@ -60,7 +60,7 @@ jobs:
           echo "🔹 PR Number: ${{ github.event.pull_request.number }}"
           echo "🔹 PR URL: ${{ github.event.pull_request.html_url }}"
 
-          echo "🔍 Extracting PR Details..."
+          # Extract PR details
           PR_NUMBER="${{ github.event.pull_request.number }}"
           REPO_NAME="${{ github.repository }}"
           PR_USER="${{ github.event.pull_request.user.login }}"
@@ -76,20 +76,21 @@ jobs:
           gh auth status || { echo "❌ GH_TOKEN authentication failed!"; exit 1; }
 
           echo "🔍 Checking if PR author is a collaborator or team member..."
-          
+
           # Checking Collaborator Status
           COLLABORATOR_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" \
             "https://api.github.com/repos/$REPO_NAME/collaborators/$PR_USER")
 
-          # Checking Team Membership Status
+          # Checking Team Membership Status (Requires `read:org` permission)
           TEAM_MEMBER_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" \
-            "https://api.github.com/orgs/EduMilestoneDeveloperOrg/teams/neural-vision/members/$PR_USER")
+            "https://api.github.com/orgs/EduMilestoneDeveloperOrg/teams/neural-vision/memberships/$PR_USER")
           TEAM_MEMBER_STATUS=$(echo "$TEAM_MEMBER_RESPONSE" | jq -r '.state')
 
           echo "🔹 Collaborator Status Code: $COLLABORATOR_STATUS"
           echo "🔹 Team Member Response: $TEAM_MEMBER_RESPONSE"
           echo "🔹 Team Member Status: $TEAM_MEMBER_STATUS"
 
+          # Validate Access
           if [[ "$COLLABORATOR_STATUS" -ne 204 && "$TEAM_MEMBER_STATUS" != "active" ]]; then
             echo "❌ ERROR: Only repository collaborators or team members can raise pull requests!"
             exit 1
@@ -108,7 +109,7 @@ jobs:
           fi
 
           echo "✅ Branch name '$PR_BRANCH' is valid and meets the required pattern."
-
+  
   enforce_pr_description:
     name: 📜 Enforce PR Description
     # ❌ Prevents workflow execution if triggered by `github-merge-queue`
