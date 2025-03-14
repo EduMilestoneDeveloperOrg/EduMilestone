@@ -43,12 +43,12 @@ permissions:
 jobs:
   pr_restriction:
     name: 🚧 Enforce PR Restrictions
+    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
     if: github.actor != 'github-merge-queue[bot]' 
     runs-on: ubuntu-latest
     steps:
       - name: ⏳ Delay Before Job Start
-        run: sleep 3  # Adds a short delay before execution
-  
+        run: sleep 3  # Adds a 3-second delay before execution
       - name: 🔍 Debug & Verify PR Author and Branch
         env:
           GH_TOKEN: ${{ secrets.GH_MAIN_TOKEN }}  # ✅ Use the Org Owner Token
@@ -61,21 +61,32 @@ jobs:
           echo "🔹 PR Number: ${{ github.event.pull_request.number }}"
           echo "🔹 PR URL: ${{ github.event.pull_request.html_url }}"
   
+          echo "🔍 Extracting PR Number..."
           PR_NUMBER="${{ github.event.pull_request.number }}"
           REPO_NAME="${{ github.repository }}"
-          PR_USER="${{ github.actor }}"
-          PR_BRANCH="${{ github.head_ref }}"
+          PR_BRANCH="${{ github.event.pull_request.head.ref }}"  # ✅ Fixed issue here
   
           if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
             echo "❌ ERROR: PR number is missing or invalid."
             exit 1
           fi
-  
-          echo "✅ PR Author: $PR_USER"
-  
+          echo "🔹 Extracted PR Number: '$PR_NUMBER'"
+          echo "🔹 Repository: $REPO_NAME"
           echo "🔍 Checking GitHub Token Authentication..."
           gh auth status || { echo "❌ ERROR: GitHub authentication failed!"; exit 1; }
-  
+          echo "🔍 Fetching PR Author..."
+          PR_USER=$(curl -s -H "Authorization: token $GH_TOKEN" \
+            "https://api.github.com/repos/$REPO_NAME/pulls/$PR_NUMBER" | jq -r '.user.login')
+          echo "✅ PR Author: $PR_USER"
+
+          if [[ -z "$PR_USER" || "$PR_USER" == "null" ]]; then
+            echo "❌ ERROR: Failed to retrieve PR author."
+            echo "   - PR number may be incorrect"
+            echo "   - GH_TOKEN may lack permissions"
+            echo "   - Repository may be private"
+            exit 1
+          fi
+
           echo "🔍 Step 1️⃣: Checking if PR author is a 'neural-vision' team member..."
           TEAM_MEMBERS_URL="https://api.github.com/orgs/EduMilestoneDeveloperOrg/teams/neural-vision/members"
           TEAM_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" "$TEAM_MEMBERS_URL")
@@ -89,23 +100,36 @@ jobs:
           echo "$TEAM_RESPONSE" | jq -r '.[].login' || echo "⚠️ No team members found."
   
           if echo "$TEAM_RESPONSE" | jq -r '.[].login' | grep -q "^$PR_USER$"; then
-            echo "✅ PR Author '$PR_USER' is a member of 'neural-vision'. ✅ PR Approved."
+            echo "✅ PR Author '$PR_USER' is a member of 'neural-vision'. ✅ PR Check PASS."
             exit 0  # ✅ Allow PR
           fi
-  
-          echo "🔍 Step 2️⃣: Checking if PR author is an Organization Member..."
+
+          echo "🔍 Step 2️⃣: Checking if PR author '$PR_USER' is an Organization Member or Repository Collaborator..."
+            
+          # ✅ Check if the PR author is an Organization Member
           ORG_MEMBERS_URL="https://api.github.com/orgs/EduMilestoneDeveloperOrg/members"
           ORG_MEMBERS_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" "$ORG_MEMBERS_URL")
-  
+          # Extract organization members and log them
+          ORG_MEMBERS=$(echo "$ORG_MEMBERS_RESPONSE" | jq -r '.[].login')
           echo "🔹 Retrieved Organization Members:"
-          echo "$ORG_MEMBERS_RESPONSE" | jq -r '.[].login' || echo "⚠️ No organization members found."
-  
-          if echo "$ORG_MEMBERS_RESPONSE" | jq -r '.[].login' | grep -q "^$PR_USER$"; then
-            echo "✅ PR Author '$PR_USER' is an Organization Member. ✅ PR Approved."
-            exit 0  # ✅ Allow PR
+          echo "$ORG_MEMBERS" || echo "⚠️ No organization members found."
+
+          if echo "$ORG_MEMBERS" | grep -q "^$PR_USER$"; then
+              echo "✅ PR Author '$PR_USER' is an **Organization Member**. PR is allowed."
+              exit 0
           fi
-  
-          echo "🔍 Step 3️⃣: Checking if PR author is an Outside Collaborator..."
+
+          # ✅ Check if the PR author is a repository collaborator
+          echo "🔍 Step 3️⃣: Checking if PR author '$PR_USER' is a **Repository Collaborator**..."
+          COLLABORATOR_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" \
+              "https://api.github.com/repos/$REPO_NAME/collaborators/$PR_USER")
+
+          if [[ "$COLLABORATOR_STATUS" -eq 204 ]]; then
+              echo "✅ PR Author '$PR_USER' is a Repository Collaborator. ✅ PR is allowed."
+              exit 0
+          fi
+
+          echo "🔍 Step  4️⃣: Checking if PR author is an Outside Collaborator..."
           OUTSIDE_COLLAB_URL="https://api.github.com/repos/$REPO_NAME/outside_collaborators"
           OUTSIDE_COLLAB_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" "$OUTSIDE_COLLAB_URL")
   
@@ -113,7 +137,8 @@ jobs:
           echo "$OUTSIDE_COLLAB_RESPONSE" | jq -r '.[].login' || echo "⚠️ No outside collaborators found."
   
           if echo "$OUTSIDE_COLLAB_RESPONSE" | jq -r '.[].login' | grep -q "^$PR_USER$"; then
-            echo "✅ PR Author '$PR_USER' is an Outside Collaborator. ✅ PR Approved."
+            echo "✅ PR Author '$PR_USER' is an Outside Collaborator. ✅ PR Check PASS."
+             exit 0  # ✅ Fixed: Explicitly exit if PR author is an outside collaborator
           else
             echo "❌ ERROR: PR Author '$PR_USER' is NOT authorized."
             echo "🔹 They are NOT a member of 'neural-vision'."
@@ -122,16 +147,18 @@ jobs:
             echo "❌ Blocking PR."
             exit 1  # ❌ Block PR
           fi
-  
+
           echo "🔍 Final Step: Checking PR Branch Naming Conventions..."
+          echo "🔍 Checking branch name..."
+          PR_BRANCH="${{ github.head_ref }}"
           echo "🔹 PR Branch: $PR_BRANCH"
   
+          # Check if branch name contains the required string
           if [[ ! "$PR_BRANCH" =~ M/M01/PROD_TOOLS/OCR/ ]]; then
             echo "❌ ERROR: Branch name does not meet the required pattern 'M/M01/PROD_TOOLS/OCR/'."
             exit 1
           fi
-  
-          echo "✅ Branch name '$PR_BRANCH' is valid. ✅ PR Approved."
+          echo "✅ Branch name '$PR_BRANCH' is valid and meets the required pattern."
 
   enforce_pr_description:
     name: 📜 Enforce PR Description
