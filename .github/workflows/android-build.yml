@@ -48,66 +48,44 @@ jobs:
       pull-requests: write  # To comment on PRs
 
     steps:
-    # Step 1: Checkout the repository code (first time on base branch)
-    - name: Checkout code (base branch)
-      uses: actions/checkout@v3
-      with:
-        ref: master  # or 'main'
-
-    # Step 2: Install MegaLinter using Docker
-    - name: Install MegaLinter (base codebase)
-      run: |
-        docker pull megalinter/megalinter:latest
-        docker run --rm -v $(pwd):/mnt/mega-linter megalinter/megalinter:latest --run --ci --disable=all --workspace /mnt/mega-linter
-
-    # Step 3: Fetch PR details (PR number, PR link)
-    - name: Fetch PR details
-      id: pr_details
-      run: |
-        PR_NUMBER=$(echo ${GITHUB_REF} | cut -d'/' -f3)
-        PR_LINK="https://github.com/${GITHUB_REPOSITORY}/pull/${PR_NUMBER}"
-        echo "PR_NUMBER=${PR_NUMBER}" >> $GITHUB_ENV
-        echo "PR_LINK=${PR_LINK}" >> $GITHUB_ENV
-        echo "PR details: PR_NUMBER=${PR_NUMBER}, PR_LINK=${PR_LINK}"
-
-    # Step 4: Checkout the PR branch to check the PR changes
+    # Step 1: Checkout the PR branch
     - name: Checkout PR branch
       uses: actions/checkout@v3
       with:
         ref: ${{ github.head_ref }}
 
-    # Step 5: Run MegaLinter only on the PR changes (compared to master)
+    # Step 2: Run MegaLinter on PR changes
     - name: Run MegaLinter on PR changes
       run: |
         docker pull megalinter/megalinter:latest
         docker run --rm -v $(pwd):/mnt/mega-linter megalinter/megalinter:latest --run --ci --disable=all --workspace /mnt/mega-linter --changed
 
-    # Step 6: Upload MegaLinter report as an artifact (for future review)
+    # Step 3: Upload MegaLinter report as an artifact
     - name: Upload MegaLinter report artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: megalinter-report
         path: /tmp/lint/report/linters_logs
 
-    # Step 7: Comment on PR with MegaLinter results
+    # Step 4: Comment on PR with MegaLinter results
     - name: Comment on PR with MegaLinter results
       uses: peter-evans/create-or-update-comment@v2
       with:
-        issue-number: ${{ env.PR_NUMBER }}
+        issue-number: ${{ github.event.pull_request.number }}
         body: |
           ### MegaLinter Results
           Linter results for the pull request:
 
-          PR Link: [${{ env.PR_LINK }}](${{env.PR_LINK }})
+          PR Link: [${{ github.event.pull_request.html_url }}](${{github.event.pull_request.html_url }})
 
           You can find the full MegaLinter report here: [Linting Report Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for fixing.
 
-    # Step 8: Comment "approved" if everything looks good
+    # Step 5: Comment "approved" if everything looks good
     - name: Comment approved on PR
       if: success()
       uses: peter-evans/create-or-update-comment@v2
       with:
-        issue-number: ${{ env.PR_NUMBER }}
+        issue-number: ${{ github.event.pull_request.number }}
         body: |
           ### MegaLinter Results
           The PR is ready for approval. All linting issues have been fixed.
