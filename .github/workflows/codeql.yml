@@ -4,9 +4,11 @@ on:
   workflow_call:  # This allows the workflow to be called from other workflows
     inputs:
       language:
+        description: "Kotlin Programming language to analyze"  # ✅ Added description
         required: true  # Language parameter is required
         type: string
       build-mode:
+        description: "Build mode for CodeQL analysis"  # ✅ Added description
         required: true  # Build mode parameter is required
         type: string
 
@@ -26,7 +28,6 @@ jobs:
         include:
           - language: ${{ inputs.language }}  # Include the language from the workflow call input
             build-mode: ${{ inputs.build-mode }}  # Include the build mode from the workflow call input
-
     steps:
     # Step 1: Checkout the repository
     - name: Checkout repository
