@@ -86,31 +86,24 @@ jobs:
             echo "   - Repository may be private"
             exit 1
           fi
-          echo "🔍 Step 2️⃣: Checking if PR author '$PR_USER' is an Organization Member or Repository Collaborator..."
-            
-          # ✅ Check if the PR author is an Organization Member
-          ORG_MEMBERS_URL="https://api.github.com/orgs/EduMilestoneDeveloperOrg/members"
-          ORG_MEMBERS_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" "$ORG_MEMBERS_URL")
-          # Extract organization members and log them
-          ORG_MEMBERS=$(echo "$ORG_MEMBERS_RESPONSE" | jq -r '.[].login')
-          echo "🔹 Retrieved Organization Members:"
-          echo "$ORG_MEMBERS" || echo "⚠️ No organization members found."
-
-          if echo "$ORG_MEMBERS" | grep -q "^$PR_USER$"; then
-              echo "✅ PR Author '$PR_USER' is an **Organization Member**. PR is allowed."
-              exit 0
-          fi
-
           # ✅ Check if the PR author is a repository collaborator
           echo "🔍 Step 3️⃣: Checking if PR author '$PR_USER' is a **Repository Collaborator**..."
+          # Fetch the repository collaborators
+          COLLABORATORS_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" "https://api.github.com/repos/$REPO_NAME/collaborators")
+          echo "🔹 Retrieved Repository Collaborators:"
+          echo "$COLLABORATORS_RESPONSE" | jq -r '.[].login' || echo "⚠️ No collaborators found."
+          
+          # Check if the PR author is in the list of collaborators
           COLLABORATOR_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" \
               "https://api.github.com/repos/$REPO_NAME/collaborators/$PR_USER")
-
+          
           if [[ "$COLLABORATOR_STATUS" -eq 204 ]]; then
               echo "✅ PR Author '$PR_USER' is a Repository Collaborator. ✅ PR is allowed."
               exit 0
+          else
+              echo "❌ PR Author '$PR_USER' is NOT a Repository Collaborator. 🚫 PR is blocked."
+              exit 1
           fi
-
           echo "🔍 Step  4️⃣: Checking if PR author is an Outside Collaborator..."
           OUTSIDE_COLLAB_URL="https://api.github.com/repos/$REPO_NAME/outside_collaborators"
           OUTSIDE_COLLAB_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" "$OUTSIDE_COLLAB_URL")
