@@ -44,57 +44,58 @@ jobs:
   mega-linter:
     runs-on: ubuntu-latest
     steps:
-    # Step 1: Checkout the PR branch
-    - name: Checkout PR branch
-      uses: actions/checkout@v3
-      with:
-        ref: ${{ github.head_ref }}
-
-    # Step 2: Debug: Check directory structure and current working directory
-    - name: Debug directory structure
-      run: |
-        echo "🔍 Checking directory structure..."
-        ls -al .
-        echo "🔍 Current working directory: $(pwd)"
-        echo "🔍 Contents of current directory:"
-        ls -al
-
-    # Step 3: Run MegaLinter on PR changes
-    - name: Run MegaLinter on PR changes
-      run: |
-        docker pull megalinter/megalinter:latest
-        docker run --rm \
-          -v ${{ github.workspace }}:/mnt/mega-linter \
-          megalinter/megalinter:latest --run --ci --disable=all --workspace /mnt/mega-linter --changed
-
-    # Step 4: Upload MegaLinter report as an artifact
-    - name: Upload MegaLinter report artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: megalinter-report
-        path: /tmp/lint/report/linters_logs
-
-    # Step 5: Comment on PR with MegaLinter results
-    - name: Comment on PR with MegaLinter results
-      uses: peter-evans/create-or-update-comment@v2
-      with:
-        issue-number: ${{ github.event.pull_request.number }}
-        body: |
-          ### MegaLinter Results
-          Linter results for the pull request:
-
-          PR Link: [${{ github.event.pull_request.html_url }}](${{github.event.pull_request.html_url }})
-
-          You can find the full MegaLinter report here: [Linting Report Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for fixing.
-
-    # Step 6: Comment "approved" if everything looks good
-    - name: Comment approved on PR
-      if: success()
-      uses: peter-evans/create-or-update-comment@v2
-      with:
-        issue-number: ${{ github.event.pull_request.number }}
-        body: |
-          ### MegaLinter Results
-          The PR is ready for approval. All linting issues have been fixed.
-
-          **PR has been approved**. ✅
+      # Step 1: Checkout the PR branch
+      - name: Checkout PR branch
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+  
+      # Step 2: Debug: Check directory structure and current working directory
+      - name: Debug directory structure
+        run: |
+          echo "🔍 Checking directory structure..."
+          ls -al .
+          echo "🔍 Current working directory: $(pwd)"
+          echo "🔍 Contents of current directory:"
+          ls -al
+  
+      # Step 3: Run MegaLinter on PR changes
+      - name: Run MegaLinter on PR changes
+        run: |
+          docker pull megalinter/megalinter:latest
+          docker run --rm \
+            -v ${{ github.workspace }}:/mnt/mega-linter \
+            -e GITHUB_WORKSPACE=/mnt/mega-linter \
+            megalinter/megalinter:latest --run --ci --disable=all --workspace /mnt/mega-linter --changed
+  
+      # Step 4: Upload MegaLinter report as an artifact
+      - name: Upload MegaLinter report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: megalinter-report
+          path: /tmp/lint/report/linters_logs
+  
+      # Step 5: Comment on PR with MegaLinter results
+      - name: Comment on PR with MegaLinter results
+        uses: peter-evans/create-or-update-comment@v2
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### MegaLinter Results
+            Linter results for the pull request:
+  
+            PR Link: [${{ github.event.pull_request.html_url }}](${{ github.event.pull_request.html_url }})
+  
+            You can find the full MegaLinter report here: [Linting Report Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for fixing.
+  
+      # Step 6: Comment "approved" on PR if all linting checks passed
+      - name: Comment approved on PR
+        if: success()
+        uses: peter-evans/create-or-update-comment@v2
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### MegaLinter Results
+            The PR is ready for approval. All linting issues have been fixed.
+  
+            **PR has been approved**. ✅
