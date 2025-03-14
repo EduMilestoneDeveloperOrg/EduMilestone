@@ -44,7 +44,7 @@ jobs:
   mega-linter:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # To access the repository contents
+      contents: read  # To access the repository contents
       pull-requests: write  # To comment on PRs
 
     steps:
@@ -82,7 +82,7 @@ jobs:
 
     # Step 6: Upload MegaLinter report as artifact
     - name: Upload MegaLinter report artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v2  # Use v2 instead of v3
       with:
         name: megalinter-report
         path: /tmp/lint/report/linters_logs
@@ -96,7 +96,8 @@ jobs:
           ### MegaLinter Results
           Linter results for the pull request:
 
-          PR Link: [${{ env.PR_LINK }}](${{env.PR_LINK }})
+          PR Link: [${{ env.PR_LINK }}](${{
+ env.PR_LINK }})
 
           You can find the full MegaLinter report here: [Linting Report Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for fixing.
 
