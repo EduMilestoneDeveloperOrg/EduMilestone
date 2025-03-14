@@ -86,24 +86,6 @@ jobs:
             echo "   - Repository may be private"
             exit 1
           fi
-
-          echo "🔍 Step 1️⃣: Checking if PR author is a 'neural-vision' team member..."
-          TEAM_MEMBERS_URL="https://api.github.com/orgs/EduMilestoneDeveloperOrg/teams/neural-vision/members"
-          TEAM_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" "$TEAM_MEMBERS_URL")
-  
-          if echo "$TEAM_RESPONSE" | jq -e .message 2>/dev/null | grep -q "Not Found"; then
-            echo "❌ ERROR: Team 'neural-vision' not found or API access denied."
-            exit 1
-          fi
-  
-          echo "🔹 Retrieved Team Members:"
-          echo "$TEAM_RESPONSE" | jq -r '.[].login' || echo "⚠️ No team members found."
-  
-          if echo "$TEAM_RESPONSE" | jq -r '.[].login' | grep -q "^$PR_USER$"; then
-            echo "✅ PR Author '$PR_USER' is a member of 'neural-vision'. ✅ PR Check PASS."
-            exit 0  # ✅ Allow PR
-          fi
-
           echo "🔍 Step 2️⃣: Checking if PR author '$PR_USER' is an Organization Member or Repository Collaborator..."
             
           # ✅ Check if the PR author is an Organization Member
