@@ -44,7 +44,7 @@ jobs:
   mega-linter:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # To access the repository contents
+      contents: read  # To access the repository contents
       pull-requests: write  # To comment on PRs
 
     steps:
@@ -54,7 +54,16 @@ jobs:
       with:
         ref: ${{ github.head_ref }}
 
-    # Step 2: Run MegaLinter on PR changes
+    # Step 2: Debug: Check directory structure and current working directory
+    - name: Debug directory structure
+      run: |
+        echo "🔍 Checking directory structure..."
+        ls -al /github/workspace
+        echo "🔍 Current working directory: $(pwd)"
+        echo "🔍 Contents of /github/workspace:"
+        ls -al /github/workspace
+
+    # Step 3: Run MegaLinter on PR changes
     - name: Run MegaLinter on PR changes
       run: |
         docker pull megalinter/megalinter:latest
@@ -62,14 +71,14 @@ jobs:
           -v /github/workspace:/mnt/mega-linter \
           megalinter/megalinter:latest --run --ci --disable=all --workspace /mnt/mega-linter --changed
 
-    # Step 3: Upload MegaLinter report as an artifact
+    # Step 4: Upload MegaLinter report as an artifact
     - name: Upload MegaLinter report artifact
       uses: actions/upload-artifact@v4
       with:
         name: megalinter-report
         path: /tmp/lint/report/linters_logs
 
-    # Step 4: Comment on PR with MegaLinter results
+    # Step 5: Comment on PR with MegaLinter results
     - name: Comment on PR with MegaLinter results
       uses: peter-evans/create-or-update-comment@v2
       with:
@@ -82,7 +91,7 @@ jobs:
 
           You can find the full MegaLinter report here: [Linting Report Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for fixing.
 
-    # Step 5: Comment "approved" if everything looks good
+    # Step 6: Comment "approved" if everything looks good
     - name: Comment approved on PR
       if: success()
       uses: peter-evans/create-or-update-comment@v2
