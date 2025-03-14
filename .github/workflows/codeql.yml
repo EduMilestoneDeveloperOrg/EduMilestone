@@ -45,7 +45,7 @@ jobs:
     - if: matrix.build-mode == 'manual'
       shell: bash
       run: |
-        echo 'Please run manual build commands'
+        echo "Please run manual build commands"
         exit 1  # Fail the job if manual build commands aren't provided
 
     # Step 4: Perform the actual CodeQL analysis using the initialized setup
