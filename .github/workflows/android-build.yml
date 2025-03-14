@@ -43,10 +43,6 @@ permissions:
 jobs:
   mega-linter:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read  # To access the repository contents
-      pull-requests: write  # To comment on PRs
-
     steps:
     # Step 1: Checkout the PR branch
     - name: Checkout PR branch
@@ -58,17 +54,17 @@ jobs:
     - name: Debug directory structure
       run: |
         echo "🔍 Checking directory structure..."
-        ls -al /github/workspace
+        ls -al .
         echo "🔍 Current working directory: $(pwd)"
-        echo "🔍 Contents of /github/workspace:"
-        ls -al /github/workspace
+        echo "🔍 Contents of current directory:"
+        ls -al
 
     # Step 3: Run MegaLinter on PR changes
     - name: Run MegaLinter on PR changes
       run: |
         docker pull megalinter/megalinter:latest
         docker run --rm \
-          -v /github/workspace:/mnt/mega-linter \
+          -v ${{ github.workspace }}:/mnt/mega-linter \
           megalinter/megalinter:latest --run --ci --disable=all --workspace /mnt/mega-linter --changed
 
     # Step 4: Upload MegaLinter report as an artifact
