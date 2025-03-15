@@ -1,5 +1,8 @@
 name: Android CI/CD Pipeline
 
+#            -e SPELL_CONFIG_FILE=/mnt/mega-linter/.cspell.json \
+#            -e JSCPD_CONFIG_FILE=/mnt/mega-linter/.jscpd.json \
+
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited, ready_for_review]
@@ -54,7 +57,7 @@ jobs:
           echo "🔍 Checking for MegaLinter configuration files..."
           MISSING_FILES=()
 
-          for file in .mega-linter.yml .cspell.json .jscpd.json; do
+          for file in .mega-linter.yml .mega-linter-ignore; do
             if [[ ! -e "$GITHUB_WORKSPACE/$file" ]]; then
               echo "❌ $file is missing! Linter might fail."
               MISSING_FILES+=("$file")
@@ -79,8 +82,6 @@ jobs:
             -v ${{ github.workspace }}:/mnt/mega-linter \
             -e GITHUB_WORKSPACE=/mnt/mega-linter \
             -e MEGA_LINTER_CONFIG=/mnt/mega-linter/.mega-linter.yml \
-            -e SPELL_CONFIG_FILE=/mnt/mega-linter/.cspell.json \
-            -e JSCPD_CONFIG_FILE=/mnt/mega-linter/.jscpd.json \
             -e MEGA_LINTER_IGNORE_FILE=/mnt/mega-linter/.mega-linter-ignore \
             megalinter/megalinter:v5 --run --ci --log-level DEBUG
         continue-on-error: false  # Allow PRs to proceed even if there are errors
