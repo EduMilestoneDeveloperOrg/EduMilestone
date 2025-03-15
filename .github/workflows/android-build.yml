@@ -228,7 +228,7 @@ jobs:
           echo "✅ PR has a valid description."
 
   enforce_pr_files_limit:
-    name: 📑 Limit PR File Changes (Max 50)
+    name: 📑 Limit PR File Changes (Max 100)
     # ❌ Prevents workflow execution if triggered by `github-merge-queue`
     if: github.actor != 'github-merge-queue[bot]' 
     runs-on: ubuntu-latest
@@ -267,7 +267,7 @@ jobs:
           fi
   
           # Verify if the number of files changed exceeds the limit
-          if [[ "$FILE_COUNT" -gt 50 ]]; then
+          if [[ "$FILE_COUNT" -gt 100 ]]; then
             echo "❌ ERROR: PR modifies too many files ($FILE_COUNT). Please split into smaller PRs."
             exit 1
           fi
