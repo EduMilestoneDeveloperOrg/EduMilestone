@@ -12,7 +12,7 @@
     "mergeable",
     "basecore",
     "toolscore",
-    "classpath"
+    "classpath",
     "codeql",
     "Intelli",
     "microservices"
