@@ -57,5 +57,5 @@ lint/reports/
 
 local.properties
 milestone/build/
-milestone/milestone_modules_01/build/
+milestone/modules01/build/
 app/build/

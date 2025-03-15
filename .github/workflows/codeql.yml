@@ -4,13 +4,20 @@ on:
   workflow_call:  # This allows the workflow to be called from other workflows
     inputs:
       language:
-        description: "Kotlin Programming language to analyze"  # ✅ Added description
+        description: "Kotlin Programming language to analyze" # ✅ Added description
         required: true  # Language parameter is required
         type: string
       build-mode:
-        description: "Build mode for CodeQL analysis"  # ✅ Added description
+        description: "Build mode for CodeQL analysis" # ✅ Added description
         required: true  # Build mode parameter is required
         type: string
+
+permissions:
+  pull-requests: write
+  contents: write
+  security-events: write  # Required for CodeQL scanning
+  actions: write
+  statuses: write
 
 jobs:
   analyze:
