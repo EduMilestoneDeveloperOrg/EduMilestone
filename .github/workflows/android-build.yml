@@ -1,26 +1,5 @@
 name: Android CI/CD Pipeline
 
-# 🚀 Features Included in the CI/CD Pipeline
-# 🚧 PR Restriction: Ensures only repository collaborators/members can raise PRs.
-# 🛡️ Security Scan (CodeQL): Runs CodeQL security analysis.
-# 🔍 Dependency Scan (Trivy): Scans dependencies for vulnerabilities.
-# 🤖 AI Code Review (Copilot): Enforces GitHub Copilot AI review on PRs.
-# 📜 PR Description Enforcement: Ensures meaningful PR descriptions.
-# 📑 PR File Limit Enforcement: Restricts PRs modifying too many files.
-# 🎨 Linting (ktlint): Enforces Kotlin coding standards.
-# ✅ Organization Owner Approval: Requires manual approval from the repository owner.
-# 🚀 Build & APK Generation: Compiles the project and generates an APK.
-# 🧪 Unit Testing: Runs unit tests (optional but recommended).
-# ✅ Final Merge Check: Ensures that all required jobs pass before PR approval.
-# 🔄 Fail-Fast Strategy: Prevents unnecessary job execution if a critical job fails.
-# ⏳ Timeout Enforcement: Limits execution time to prevent long-running jobs.
-# ♻️ Resource Cleanup: Ensures that workspaces are cleaned after execution.
-# 📢 Notifications: Sends alerts in case of failures (Slack, email, etc.).
-# 🔁 Retry Mechanism: Retries transient failures automatically.
-# ⚡ Parallelization: Runs independent jobs concurrently to speed up execution.
-# 📦 Dependency Caching: Caches Gradle dependencies to optimize build speed.
-
-
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited, ready_for_review]
@@ -35,7 +14,7 @@ on:
 permissions:
   pull-requests: write
   contents: write
-  security-events: write  # Required for CodeQL scanning
+  security-events: write
   actions: write
   statuses: write
   id-token: write
@@ -44,13 +23,13 @@ jobs:
   mega-linter:
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Checkout the PR branch
+      # Step 1: Checkout PR branch
       - name: Checkout PR branch
         uses: actions/checkout@v3
         with:
           ref: ${{ github.head_ref }}
-  
-      # Step 2: Debug: Check directory structure and current working directory
+
+      # Step 2: Debug directory structure
       - name: Debug directory structure
         run: |
           echo "🔍 Checking directory structure..."
@@ -58,26 +37,27 @@ jobs:
           echo "🔍 Current working directory: $(pwd)"
           echo "🔍 Contents of current directory:"
           ls -al
-  
-      # Step 3: Run MegaLinter on PR changes
+
+      # Step 3: Run MegaLinter with optimizations
       - name: Run MegaLinter on PR changes
         id: mega_linter
         run: |
-          docker pull megalinter/megalinter:latest
+          docker pull megalinter/megalinter:v6
           docker run --rm \
             -v ${{ github.workspace }}:/mnt/mega-linter \
             -e GITHUB_WORKSPACE=/mnt/mega-linter \
-            megalinter/megalinter:latest --run --ci --disable=all --workspace /mnt/mega-linter --changed
-        continue-on-error: true  # This ensures that the workflow doesn't stop on failure
-  
+            -e MEGA_LINTER_CONFIG=/mnt/mega-linter/.mega-linter.yml \
+            megalinter/megalinter:v6 --run --ci --only-changed
+        continue-on-error: true  # Allow PRs to proceed even if there are errors
+
       # Step 4: Upload MegaLinter report as an artifact
       - name: Upload MegaLinter report artifact
-        if: failure()  # Only runs if the previous step failed
+        if: failure()  # Runs only if MegaLinter fails
         uses: actions/upload-artifact@v4
         with:
           name: megalinter-report
           path: /tmp/lint/report/linters_logs
-  
+
       # Step 5: Comment on PR with MegaLinter results
       - name: Comment on PR with MegaLinter results
         uses: peter-evans/create-or-update-comment@v2
@@ -86,11 +66,11 @@ jobs:
           body: |
             ### MegaLinter Results
             Linter results for the pull request:
-  
+
             PR Link: [${{ github.event.pull_request.html_url }}](${{ github.event.pull_request.html_url }})
-  
+
             You can find the full MegaLinter report here: [Linting Report Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for fixing.
-  
+
       # Step 6: Comment "approved" on PR if all linting checks passed
       - name: Comment approved on PR
         if: success()
@@ -100,5 +80,5 @@ jobs:
           body: |
             ### MegaLinter Results
             The PR is ready for approval. All linting issues have been fixed.
-  
+
             **PR has been approved**. ✅
