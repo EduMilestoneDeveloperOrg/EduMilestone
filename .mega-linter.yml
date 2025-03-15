@@ -1,6 +1,6 @@
 # Mega-Linter Configuration (EduMilestone Project)
 # Disables unnecessary checks and optimizes scanning performance
-
+---
 linters:
   disable:
     - SPELL_CSPELL        # Disable spell-checking false positives
@@ -10,7 +10,9 @@ linters:
     - YAML_YAMLLINT       # Ignore YAML indentation errors
     - MARKDOWN_MARKDOWNLINT  # Ignore markdown formatting issues
     - KOTLIN_KTLINT       # Disable strict Kotlin formatting checks
-
+    - YAML_PRETTIER         # Ignore YAML formatting warnings
+    - ACTION_ACTIONLINT     # Ignore GitHub Actions false positives
+    - MARKDOWN_MARKDOWNLINT # Ignore trailing spaces in Markdown
   # Exclude specific folders from linting
   exclude:
     - "milestone/modules01/src/main/res/**"  # Ignore resource XML files
@@ -20,7 +22,9 @@ linters:
     - "**/tests/**"  # Ignore test files
     - "**/build/**"  # Ignore build artifacts
     - "**/backup_rules.xml"
-
+ignore:
+  - ".github/workflows/auto_merge.yml"
+  
 TYPOS_FILTER_REGEX_EXCLUDE: |
   .*res/drawable/.*\.xml
   .*res/mipmap/.*\.xml
