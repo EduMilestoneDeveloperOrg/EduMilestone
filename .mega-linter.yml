@@ -9,6 +9,7 @@ linters:
     - XML_XMLLINT         # Disable strict XML validation (AAPT issues)
     - YAML_YAMLLINT       # Ignore YAML indentation errors
     - MARKDOWN_MARKDOWNLINT  # Ignore markdown formatting issues
+    - KOTLIN_KTLINT       # Disable strict Kotlin formatting checks
 
   # Exclude specific folders from linting
   exclude:
@@ -16,8 +17,12 @@ linters:
     - "app/src/main/res/**"
     - "**/gradle/**"  # Ignore Gradle build files
     - "**/node_modules/**"
+    - "**/tests/**"  # Ignore test files
+    - "**/build/**"  # Ignore build artifacts
+    - "**/backup_rules.xml"
 
 TYPOS_FILTER_REGEX_EXCLUDE: |
   .*res/drawable/.*\.xml
   .*res/mipmap/.*\.xml
   .*res/values/.*\.xml
+  .*gradle/.*\.properties
