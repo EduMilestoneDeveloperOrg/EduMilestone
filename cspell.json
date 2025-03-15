@@ -13,5 +13,8 @@
     "basecore",
     "toolscore",
     "classpath"
+    "codeql",
+    "Intelli",
+    "microservices"
   ]
 }
