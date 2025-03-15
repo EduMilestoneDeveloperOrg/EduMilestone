@@ -42,12 +42,12 @@ jobs:
       - name: Run MegaLinter on PR changes
         id: mega_linter
         run: |
-          docker pull megalinter/megalinter:v6
+          docker pull megalinter/megalinter:latest
           docker run --rm \
             -v ${{ github.workspace }}:/mnt/mega-linter \
             -e GITHUB_WORKSPACE=/mnt/mega-linter \
             -e MEGA_LINTER_CONFIG=/mnt/mega-linter/.mega-linter.yml \
-            megalinter/megalinter:v6 --run --ci --only-changed
+            megalinter/megalinter:latest --run --ci --only-changed
         continue-on-error: true  # Allow PRs to proceed even if there are errors
 
       # Step 4: Upload MegaLinter report as an artifact
