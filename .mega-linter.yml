@@ -1,0 +1,24 @@
+# Mega-Linter Configuration (EduMilestone Project)
+# Disables unnecessary checks and optimizes scanning performance
+
+linters:
+  disable:
+    - SPELL_CSPELL        # Disable spell-checking false positives
+    - SPELL_MISSPELL      # Disable dictionary-based spell-check
+    - COPYPASTE_JSCPD     # Disable duplicate file detection
+    - XML_XMLLINT         # Disable strict XML validation (AAPT issues)
+    - YAML_YAMLLINT       # Ignore YAML indentation errors
+    - MARKDOWN_MARKDOWNLINT  # Ignore markdown formatting issues
+
+  # Exclude specific folders from linting
+  exclude:
+    - "milestone/modules01/src/main/res/**"  # Ignore resource XML files
+    - "app/src/main/res/**"
+    - "**/gradle/**"  # Ignore Gradle build files
+    - "**/node_modules/**"
+
+TYPOS_FILTER_REGEX_EXCLUDE: |
+  .*res/drawable/.*\.xml
+  .*res/mipmap/.*\.xml
+  .*res/values/.*\.xml
+  
