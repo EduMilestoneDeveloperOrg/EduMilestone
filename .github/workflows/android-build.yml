@@ -23,13 +23,40 @@ jobs:
   mega-linter:
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Checkout PR branch
+      # ✅ Step 1: Clear Cache to Ensure Latest Config
+      - name: Clear Cache to Ensure Latest Config
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache
+          key: ${{ runner.os }}-mega-linter-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-mega-linter
+
+      # ✅ Step 2: Checkout PR branch
       - name: Checkout PR branch
         uses: actions/checkout@v3
         with:
           ref: ${{ github.head_ref }}
 
-      # Step 2: Debug directory structure
+      # ✅ Step 3: Ensure MegaLinter Configurations Are Present
+      - name: Ensure MegaLinter Configurations Exist
+        run: |
+          echo "🔍 Checking for MegaLinter configuration files..."
+          if [ ! -f ".mega-linter.yml" ]; then
+            echo "❌ .mega-linter.yml is missing! MegaLinter will not use custom configurations."
+            exit 1
+          fi
+          if [ ! -f ".cspell.json" ]; then
+            echo "❌ .cspell.json is missing! Spell check might fail."
+            exit 1
+          fi
+          if [ ! -f ".jscpd.json" ]; then
+            echo "❌ .jscpd.json is missing! Duplicate detection might fail."
+            exit 1
+          fi
+          echo "✅ All necessary configuration files exist."
+
+      # ✅ Step 4: Debug directory structure
       - name: Debug directory structure
         run: |
           echo "🔍 Checking directory structure..."
@@ -38,7 +65,7 @@ jobs:
           echo "🔍 Contents of current directory:"
           ls -al
 
-      # Step 3: Run MegaLinter with optimizations
+      # ✅ Step 5: Run MegaLinter with explicit config paths
       - name: Run MegaLinter on PR changes
         id: mega_linter
         run: |
@@ -47,38 +74,38 @@ jobs:
             -v ${{ github.workspace }}:/mnt/mega-linter \
             -e GITHUB_WORKSPACE=/mnt/mega-linter \
             -e MEGA_LINTER_CONFIG=/mnt/mega-linter/.mega-linter.yml \
-            megalinter/megalinter:latest --run --ci --only-changed
+            -e SPELL_CONFIG_FILE=/mnt/mega-linter/.cspell.json \
+            -e JSCOD_CONFIG_FILE=/mnt/mega-linter/.jscpd.json \
+            megalinter/megalinter:latest --run --ci --log-level DEBUG
         continue-on-error: true  # Allow PRs to proceed even if there are errors
 
-      # Step 4: Upload MegaLinter report as an artifact
+      # ✅ Step 6: Upload MegaLinter report as an artifact
       - name: Upload MegaLinter report artifact
         if: failure()  # Runs only if MegaLinter fails
         uses: actions/upload-artifact@v4
         with:
           name: megalinter-report
-          path: /tmp/lint/report/linters_logs
+          path: ${{ github.workspace }}/megalinter-reports  # ✅ Updated path
 
-      # Step 5: Comment on PR with MegaLinter results
+      # ✅ Step 7: Comment on PR with MegaLinter results
       - name: Comment on PR with MegaLinter results
         uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            ### MegaLinter Results
-            Linter results for the pull request:
+            ### 🔍 MegaLinter Results
+            🚀 **Linter results for the pull request:**
 
-            PR Link: [${{ github.event.pull_request.html_url }}](${{ github.event.pull_request.html_url }})
+            - 📌 **PR Link**: [${{ github.event.pull_request.html_url }}](${{ github.event.pull_request.html_url }})
+            - 📄 **MegaLinter Report**: [Linting Report Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-            You can find the full MegaLinter report here: [Linting Report Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for fixing.
-
-      # Step 6: Comment "approved" on PR if all linting checks passed
-      - name: Comment approved on PR
+      # ✅ Step 8: Comment "approved" on PR if all linting checks passed
+      - name: Approve PR if No Errors
         if: success()
         uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            ### MegaLinter Results
-            The PR is ready for approval. All linting issues have been fixed.
-
-            **PR has been approved**. ✅
+            ### ✅ MegaLinter Results
+            **The PR is ready for approval. All linting issues have been fixed.**
+            PR Approved 🎉
