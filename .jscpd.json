@@ -1,5 +1,5 @@
 {
-  "patterns": [
+  "ignorePatterns": [
     "**/ui/theme/Type.kt",
     "**/ui/theme/Color.kt",
     "**/ui/theme/Theme.kt",
