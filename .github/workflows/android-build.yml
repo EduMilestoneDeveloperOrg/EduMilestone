@@ -74,7 +74,6 @@ jobs:
         run: |
           echo "🚀 Pulling MegaLinter (latest version)..."
           docker pull megalinter/megalinter:latest
-
           echo "🔍 Running MegaLinter..."
           docker run --rm \
             -v ${{ github.workspace }}:/mnt/mega-linter \
@@ -82,8 +81,9 @@ jobs:
             -e MEGA_LINTER_CONFIG=/mnt/mega-linter/.mega-linter.yml \
             -e SPELL_CONFIG_FILE=/mnt/mega-linter/.cspell.json \
             -e JSCPD_CONFIG_FILE=/mnt/mega-linter/.jscpd.json \
-            megalinter/megalinter:latest --run --ci --log-level DEBUG
-        continue-on-error: true  # Allow PRs to proceed even if there are errors
+            -e MEGA_LINTER_IGNORE_FILE=/mnt/mega-linter/.mega-linter-ignore \
+            megalinter/megalinter:v5 --run --ci --log-level DEBUG
+        continue-on-error: false  # Allow PRs to proceed even if there are errors
 
       # ✅ Step 6: Upload MegaLinter report as an artifact
       - name: Upload MegaLinter report artifact
