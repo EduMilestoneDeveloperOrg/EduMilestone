@@ -1,10 +1,9 @@
 name: Auto Merge
 
 on:
-  workflow_run:
-    workflows: ["Android CI/CD Pipeline"]  # ✅ Matches your master workflow name
-    types:
-      - completed  # ✅ Triggers when the workflow finishes
+  merge_group:
+    branches:
+      - master  # ✅ Runs only when PR enters the merge queue
 
 permissions:
   pull-requests: write
