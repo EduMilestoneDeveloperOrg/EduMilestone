@@ -1,9 +1,16 @@
 {
-  "ignorePatterns": [
+  "ignorePaths": [
     "**/ui/theme/Type.kt",
     "**/ui/theme/Color.kt",
     "**/ui/theme/Theme.kt",
-    "**/res/**"
+    "**/res/**",
+    "**/.github/workflows/**",
+    "**/node_modules/**",
+    "**/build/**",
+    "**/gradle/**",
+    "**/.git/**",
+    "**/gradlew",
+    "**/gradlew.bat"
   ],
   "words": [
     "androidx",
@@ -29,6 +36,10 @@
     "MARKDOWNLINT",
     "Xdock",
     "cygpath",
-    "OURCYGPATTERN"
+    "OURCYGPATTERN",
+    "Dorg",
+    "JAVACMD",
+    "ROOTDIRS",
+    "CYGPATTERN"
   ]
 }
