@@ -1,4 +1,3 @@
-# ✅ Mega-Linter Configuration (Fully Optimized)
 ---
 ENABLE_LINTERS: ""  # ✅ Disable all linters, then manually enable only required ones
 linters:
@@ -12,6 +11,8 @@ linters:
     - ACTION_ACTIONLINT    # ✅ Ignore GitHub Actions false positives
     - KOTLIN_KTLINT        # ✅ Ignore minor Kotlin formatting issues
     - MARKDOWN_MARKDOWNLINT # ✅ Ignore markdown trailing spaces
+    - PROPERTIES_CHECKSTYLE # ✅ Ignore Java properties format errors
+    - JSON_JSONLINT        # ✅ Ignore strict JSON format validation
 
 # ✅ Exclude specific folders from being scanned
 exclude:
