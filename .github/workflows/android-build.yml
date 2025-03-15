@@ -230,6 +230,7 @@ jobs:
   enforce_pr_files_limit:
     name: 📑 Limit PR File Changes (Max 100)
     runs-on: ubuntu-latest
+    needs: [enforce_pr_description]
     steps:
       - name: ⏳ Delay Before Job Start
         run: sleep 3  # Adds a 3-second delay before execution
