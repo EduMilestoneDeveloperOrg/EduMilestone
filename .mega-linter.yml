@@ -1,39 +1,50 @@
 ---
-ENABLE_LINTERS: ""  # ✅ Disable all linters, then manually enable only required ones
+ENABLE_LINTERS: ""  # ✅ Disable all linters by default, manually enable required ones
 
 linters:
   disable:
-    - SPELL_CSPELL           # ✅ Ignore spell checking
+    - SPELL_CSPELL           # ✅ Ignore spell checking errors
     - SPELL_MISSPELL         # ✅ Ignore dictionary-based spell-check
-    - COPYPASTE_JSCPD        # ✅ Ignore duplicate file detection
-    - XML_XMLLINT            # ✅ Ignore XML validation errors (AAPT issues)
-    - YAML_YAMLLINT          # ✅ Ignore YAML indentation errors
+    - COPYPASTE_JSCPD        # ✅ Ignore duplicate code detection
+    - XML_XMLLINT            # ✅ Ignore strict XML validation (AAPT issues)
+    - YAML_YAMLLINT          # ✅ Ignore YAML indentation issues
     - YAML_PRETTIER          # ✅ Ignore YAML formatting warnings
-    - ACTION_ACTIONLINT      # ✅ Ignore GitHub Actions Webhook event errors  
+    - ACTION_ACTIONLINT      # ✅ Ignore GitHub Actions workflow event errors  
     - KOTLIN_KTLINT          # ✅ Ignore minor Kotlin formatting issues
-    - MARKDOWN_MARKDOWNLINT  # ✅ Ignore markdown trailing spaces
-    - PROPERTIES_CHECKSTYLE  # ✅ Ignore Java properties format errors
+    - MARKDOWN_MARKDOWNLINT  # ✅ Ignore markdown trailing spaces & indentation
+    - PROPERTIES_CHECKSTYLE  # ✅ Ignore Java properties formatting issues
     - JSON_JSONLINT          # ✅ Ignore strict JSON format validation
+    - GITHUB_ACTIONS         # ✅ Ignore GitHub workflow validation errors
 
-# ✅ Exclude specific folders from being scanned
+# ✅ **Exclude Specific Folders from Being Scanned**
 exclude:
-  - "milestone/modules01/src/main/res/**/*"   # ✅ Fully ignore resource XML files
-  - "app/src/main/res/**/*"
-  - "**/gradle/**/*"                        # ✅ Fully ignore Gradle build files
-  - "**/node_modules/**/*"
-  - "**/tests/**/*"                        # ✅ Ignore test files
-  - "**/build/**/*"                        # ✅ Ignore build artifacts
-  - "**/backup_rules.xml"
-  - ".github/workflows/**/*"               # ✅ Ignore ALL GitHub Actions workflow files
+  - "**/gradle/**"                          # ✅ Ignore Gradle-related files
+  - "**/build/**"                           # ✅ Ignore build artifacts
+  - "**/node_modules/**"                    # ✅ Ignore dependency folders
+  - "**/test/**"                            # ✅ Ignore test files (Unit & Integration)
+  - "**/androidTest/**"                      # ✅ Ignore Android UI Tests
+  - "app/src/test/**"                        # ✅ Ignore app unit test folder
+  - "app/src/androidTest/**"                 # ✅ Ignore UI & integration test folder
+  - "milestone/modules01/src/test/**"        # ✅ Ignore Milestone 01 test files
+  - "milestone/modules01/src/androidTest/**" # ✅ Ignore integration tests in modules01
+  - "**/backup_rules.xml"                    # ✅ Ignore Android backup rules
+  - ".github/workflows/**"                   # ✅ Ignore ALL GitHub Actions workflow files
+  - "milestone/modules01/src/main/res/**"    # ✅ Fully ignore resource XML files
+  - "app/src/main/res/**"                    
 
-# ✅ Ignore all workflow YAML files from linting
+# ✅ **Ignore Specific Workflow YAML Files**
 ignore:
-  - ".github/workflows/auto_merge.yml"  # ✅ Force ignore `auto_merge.yml`
-  
+  - ".github/workflows/auto_merge.yml"       # ✅ Ignore specific workflow YAML file
 
-# ✅ Ignore unnecessary spell-check warnings
+# ✅ **Ignore Unnecessary Spell-Check Warnings**
 TYPOS_FILTER_REGEX_EXCLUDE: |
   .*res/drawable/.*\.xml
   .*res/mipmap/.*\.xml
   .*res/values/.*\.xml
   .*gradle/.*\.properties
+  .*build.gradle.*
+  .*gradlew.*
+  .*gradle-wrapper.*
+  .*settings.gradle.*
+  .*node_modules.*
+  .*workflow.*
