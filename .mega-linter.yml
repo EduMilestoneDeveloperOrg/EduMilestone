@@ -21,4 +21,3 @@ TYPOS_FILTER_REGEX_EXCLUDE: |
   .*res/drawable/.*\.xml
   .*res/mipmap/.*\.xml
   .*res/values/.*\.xml
-  
