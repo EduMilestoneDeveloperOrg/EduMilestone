@@ -1,0 +1,43 @@
+# ✅ Ignore GitHub Actions Workflow Files
+.github/workflows/**/*
+
+# ✅ Ignore Gradle build files & dependencies
+**/gradle/**
+**/gradlew
+**/gradlew.bat
+**/settings.gradle.kts
+**/build.gradle.kts
+
+# ✅ Ignore Test Files (Unit & Integration Tests)
+**/test/**                
+**/androidTest/**        
+app/src/test/**           
+app/src/androidTest/**    
+milestone/modules01/src/test/**   
+milestone/modules01/src/androidTest/**  
+
+# ✅ Ignore IDE-specific & Temporary Files
+**/.idea/**
+**/.vscode/**
+**/.DS_Store
+**/.git/**
+**/.gitignore
+**/.cache/**
+
+# ✅ Ignore Resource Files That Cause Unnecessary Errors
+**/res/**
+**/res/values/**
+**/res/drawable/**
+**/res/mipmap/**
+
+# ✅ Ignore Configuration & Log Files
+**/*.log
+**/*.lock
+**/*.iml
+**/.editorconfig
+**/.eslintignore
+**/.prettierrc
+**/.prettierignore
+**/lint-results.xml
+**/lint-baseline.xml
+**/mega-linter-report/**
