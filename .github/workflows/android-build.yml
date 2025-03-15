@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # ✅ Step 1: Clear Cache to Ensure Latest Config
-      - name: Clear Cache to Ensure Latest Config
+      - name: Clear GitHub Actions Cache
         uses: actions/cache@v3
         with:
           path: ~/.cache
@@ -38,32 +38,33 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
 
-      # ✅ Step 3: Ensure MegaLinter Configurations Are Present
+      # ✅ Step 3: Debug - List all files in the workspace
+      - name: Debug: List All Files in Workspace
+        run: |
+          echo "🔍 Listing all files in the workspace..."
+          ls -al ${{ github.workspace }}
+          echo "🔍 Checking inside .github folder..."
+          ls -al ${{ github.workspace }}/.github || echo "⚠️ .github folder missing!"
+          echo "🔍 Checking inside root directory..."
+          ls -al $GITHUB_WORKSPACE
+
+      # ✅ Step 4: Ensure MegaLinter Configurations Exist
       - name: Ensure MegaLinter Configurations Exist
         run: |
           echo "🔍 Checking for MegaLinter configuration files..."
-          if [ ! -f ".mega-linter.yml" ]; then
+          if [[ ! -e "$GITHUB_WORKSPACE/.mega-linter.yml" ]]; then
             echo "❌ .mega-linter.yml is missing! MegaLinter will not use custom configurations."
             exit 1
           fi
-          if [ ! -f ".cspell.json" ]; then
+          if [[ ! -e "$GITHUB_WORKSPACE/.cspell.json" ]]; then
             echo "❌ .cspell.json is missing! Spell check might fail."
             exit 1
           fi
-          if [ ! -f ".jscpd.json" ]; then
+          if [[ ! -e "$GITHUB_WORKSPACE/.jscpd.json" ]]; then
             echo "❌ .jscpd.json is missing! Duplicate detection might fail."
             exit 1
           fi
           echo "✅ All necessary configuration files exist."
-
-      # ✅ Step 4: Debug directory structure
-      - name: Debug directory structure
-        run: |
-          echo "🔍 Checking directory structure..."
-          ls -al .
-          echo "🔍 Current working directory: $(pwd)"
-          echo "🔍 Contents of current directory:"
-          ls -al
 
       # ✅ Step 5: Run MegaLinter with explicit config paths
       - name: Run MegaLinter on PR changes
