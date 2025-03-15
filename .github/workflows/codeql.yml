@@ -35,7 +35,6 @@ jobs:
         include:
           - language: ${{ inputs.language }}  # Include the language from the workflow call input
             build-mode: ${{ inputs.build-mode }}  # Include the build mode from the workflow call input
-
     steps:
     # Step 1: Checkout the repository
     - name: Checkout repository

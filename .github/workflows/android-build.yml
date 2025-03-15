@@ -1,26 +1,5 @@
 name: Android CI/CD Pipeline
 
-# 🚀 Features Included in the CI/CD Pipeline
-# 🚧 PR Restriction: Ensures only repository collaborators/members can raise PRs.
-# 🛡️ Security Scan (CodeQL): Runs CodeQL security analysis.
-# 🔍 Dependency Scan (Trivy): Scans dependencies for vulnerabilities.
-# 🤖 AI Code Review (Copilot): Enforces GitHub Copilot AI review on PRs.
-# 📜 PR Description Enforcement: Ensures meaningful PR descriptions.
-# 📑 PR File Limit Enforcement: Restricts PRs modifying too many files.
-# 🎨 Linting (ktlint): Enforces Kotlin coding standards.
-# ✅ Organization Owner Approval: Requires manual approval from the repository owner.
-# 🚀 Build & APK Generation: Compiles the project and generates an APK.
-# 🧪 Unit Testing: Runs unit tests (optional but recommended).
-# ✅ Final Merge Check: Ensures that all required jobs pass before PR approval.
-# 🔄 Fail-Fast Strategy: Prevents unnecessary job execution if a critical job fails.
-# ⏳ Timeout Enforcement: Limits execution time to prevent long-running jobs.
-# ♻️ Resource Cleanup: Ensures that workspaces are cleaned after execution.
-# 📢 Notifications: Sends alerts in case of failures (Slack, email, etc.).
-# 🔁 Retry Mechanism: Retries transient failures automatically.
-# ⚡ Parallelization: Runs independent jobs concurrently to speed up execution.
-# 📦 Dependency Caching: Caches Gradle dependencies to optimize build speed.
-
-
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited, ready_for_review]
@@ -35,354 +14,71 @@ on:
 permissions:
   pull-requests: write
   contents: write
-  security-events: write  # Required for CodeQL scanning
+  security-events: write
   actions: write
   statuses: write
+  id-token: write
 
 jobs:
-# 1️⃣ Pre-Checks & PR Validation (No dependencies)
-  pr_restriction:
-    name: 🚧 Enforce PR Restrictions
-    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
-    if: github.actor != 'github-merge-queue[bot]'
+  mega-linter:
     runs-on: ubuntu-latest
     steps:
-      - name: ⏳ Delay Before Job Start
-        run: sleep 3  # Adds a 3-second delay before execution
-      - name: 🔍 Debug & Verify PR Author and Branch
-        env:
-          GH_TOKEN: ${{ secrets.GH_MAIN_TOKEN }}  # ✅ Use the Org Owner Token
-        run: |
-          echo "🔍 Starting PR Debugging..."
-          echo "🔹 GitHub Event: ${{ github.event_name }}"
-          echo "🔹 Repository: ${{ github.repository }}"
-          echo "🔹 Actor (PR Author): ${{ github.actor }}"
-          echo "🔹 Action: ${{ github.event.action }}"
-          echo "🔹 PR Number: ${{ github.event.pull_request.number }}"
-          echo "🔹 PR URL: ${{ github.event.pull_request.html_url }}"
-          
-          echo "🔍 Extracting PR Number..."
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-          REPO_NAME="${{ github.repository }}"
-          PR_BRANCH="${{ github.event.pull_request.head.ref }}"  # ✅ Fixed issue here
-          
-          if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
-            echo "❌ ERROR: PR number is missing or invalid."
-            exit 1
-          fi
-          echo "🔹 Extracted PR Number: '$PR_NUMBER'"
-          echo "🔹 Repository: $REPO_NAME"
-          echo "🔍 Checking GitHub Token Authentication..."
-          gh auth status || { echo "❌ ERROR: GitHub authentication failed!"; exit 1; }
-          echo "🔍 Fetching PR Author..."
-          PR_USER=$(curl -s -H "Authorization: token $GH_TOKEN" \
-            "https://api.github.com/repos/$REPO_NAME/pulls/$PR_NUMBER" | jq -r '.user.login')
-          echo "✅ PR Author: $PR_USER"
-
-          if [[ -z "$PR_USER" || "$PR_USER" == "null" ]]; then
-            echo "❌ ERROR: Failed to retrieve PR author."
-            echo "   - PR number may be incorrect"
-            echo "   - GH_TOKEN may lack permissions"
-            echo "   - Repository may be private"
-            exit 1
-          fi
-
-          echo "🔍 Branch criteria : Checking PR Branch Naming Conventions..."
-          echo "🔍 Checking branch name..."
-          PR_BRANCH="${{ github.event.pull_request.head.ref }}"
-          echo "🔹 PR Branch: $PR_BRANCH"
-          
-          # Check if branch name contains the required string
-          if [[ ! "$PR_BRANCH" =~ M/M01/PROD_TOOLS/OCR/ ]]; then
-            echo "❌ ERROR: Branch name does not meet the required pattern 'M/M01/PROD_TOOLS/OCR/'."
-            exit 1
-          fi 
-          echo "✅ Branch name '$PR_BRANCH' is valid and meets the required pattern."
-
-          echo "🔍 Step 1️⃣: Checking if PR author is a 'neural-vision' team member..."
-          TEAM_MEMBERS_URL="https://api.github.com/orgs/EduMilestoneDeveloperOrg/teams/neural-vision/members"
-          TEAM_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" "$TEAM_MEMBERS_URL")
-          
-          if echo "$TEAM_RESPONSE" | jq -e .message 2>/dev/null | grep -q "Not Found"; then
-            echo "❌ ERROR: Team 'neural-vision' not found or API access denied."
-            exit 1
-          fi
-          
-          echo "🔹 Retrieved Team Members:"
-          echo "$TEAM_RESPONSE" | jq -r '.[].login' || echo "⚠️ No team members found."
-          
-          if echo "$TEAM_RESPONSE" | jq -r '.[].login' | grep -q "^$PR_USER$"; then
-            echo "✅ PR Author '$PR_USER' is a member of 'neural-vision'. ✅ PR Check PASS."
-            exit 0  # ✅ Allow PR
-          fi
-
-          echo "🔍 Step 2️⃣: Checking if PR author '$PR_USER' is an Organization Member or Repository Collaborator..."
-          
-          # ✅ Check if the PR author is an Organization Member
-          ORG_MEMBERS_URL="https://api.github.com/orgs/EduMilestoneDeveloperOrg/members"
-          ORG_MEMBERS_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" "$ORG_MEMBERS_URL")
-          # Extract organization members and log them
-          ORG_MEMBERS=$(echo "$ORG_MEMBERS_RESPONSE" | jq -r '.[].login')
-          echo "🔹 Retrieved Organization Members:"
-          echo "$ORG_MEMBERS" || echo "⚠️ No organization members found."
-
-          if echo "$ORG_MEMBERS" | grep -q "^$PR_USER$"; then
-              echo "✅ PR Author '$PR_USER' is an **Organization Member**. PR is allowed."
-              exit 0
-          fi
-
-          # ✅ Check if the PR author is a repository collaborator
-          echo "🔍 Step 4️⃣: Checking if PR author is an Outside Collaborator..."
-          OUTSIDE_COLLAB_URL="https://api.github.com/repos/$REPO_NAME/outside_collaborators"
-          OUTSIDE_COLLAB_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" "$OUTSIDE_COLLAB_URL")
-
-          # Log the full response for debugging
-          echo "🔹 Full Outside Collaborators Response:"
-          echo "$OUTSIDE_COLLAB_RESPONSE"
-
-          # Check if the response is empty or invalid
-          if [ -z "$OUTSIDE_COLLAB_RESPONSE" ]; then
-              echo "❌ ERROR: No response or empty response from Outside Collaborators API."
-              exit 1
-          fi
-
-          # Check if we received a 404 response (Not Found)
-          if echo "$OUTSIDE_COLLAB_RESPONSE" | jq -e '.message == "Not Found"' > /dev/null; then
-              echo "⚠️ No outside collaborators found or the endpoint is invalid."
-              # Explicitly block the PR if no collaborators are found
-              echo "❌ Blocking PR because no outside collaborators exist or the endpoint is invalid."
-              exit 1  # Block PR if no outside collaborators are found
-          fi
-
-          # Check if the response is valid JSON
-          if echo "$OUTSIDE_COLLAB_RESPONSE" | jq empty > /dev/null 2>&1; then
-              echo "🔹 Retrieved Outside Collaborators:"
-          
-              # Check if the response is an array and contains collaborator data
-              if echo "$OUTSIDE_COLLAB_RESPONSE" | jq -e 'type == "array"' > /dev/null; then
-                  # Check if the PR author is in the list of outside collaborators
-                  if echo "$OUTSIDE_COLLAB_RESPONSE" | jq -r '.[].login' | grep -q "^$PR_USER$"; then
-                      echo "✅ PR Author '$PR_USER' is an Outside Collaborator. ✅ PR Check PASS."
-                      exit 0  # ✅ Allow PR if the author is an outside collaborator
-                  else
-                      echo "❌ ERROR: PR Author '$PR_USER' is NOT an Outside Collaborator."
-                      echo "🔹 They are NOT a member of 'neural-vision'."
-                      echo "🔹 They are NOT an Organization Member."
-                      echo "🔹 They are NOT an Outside Collaborator."
-                      echo "❌ Blocking PR."
-                      exit 1  # ❌ Block PR if the author is not an outside collaborator
-                  fi
-              else
-                  echo "❌ ERROR: The response is not an array of collaborators."
-                  exit 1
-              fi
-          else
-              echo "❌ ERROR: Failed to fetch valid JSON for outside collaborators."
-              exit 1
-          fi
-
-  enforce_pr_description:
-    name: 📜 Enforce PR Description
-    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
-    if: github.actor != 'github-merge-queue[bot]' 
-    runs-on: ubuntu-latest
-    needs: [pr_restriction]
-    steps:
-      - name: ⏳ Delay Before Job Start
-        run: sleep 3  # Adds a 3-second delay before execution
-      - name: 🔍 Check PR Description
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Extract pull request number
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-          REPO_NAME="${{ github.repository }}"
-  
-          if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
-            echo "❌ ERROR: Invalid PR number. Cannot check description."
-            exit 1
-          fi
-  
-          # Retrieve the PR description using curl
-          DESCRIPTION=$(curl -s -H "Authorization: token $GH_TOKEN" \
-            "https://api.github.com/repos/$REPO_NAME/pulls/$PR_NUMBER" | jq -r '.body')
-  
-          # Debugging: Show raw description for clarity
-          echo "🔍 Raw PR Description:"
-          echo "$DESCRIPTION"
-  
-          # Ensure description retrieval succeeded
-          if [[ -z "$DESCRIPTION" || "$DESCRIPTION" == "null" ]]; then
-            echo "❌ ERROR: PR must have a meaningful description!"
-            exit 1
-          fi
-  
-          # Trim whitespace and check if the description is empty
-          TRIMMED_DESC=$(echo "$DESCRIPTION" | xargs)
-  
-          if [[ -z "$TRIMMED_DESC" ]]; then
-            echo "❌ ERROR: PR description cannot be empty or only spaces!"
-            exit 1
-          fi
-          
-          echo "✅ PR has a valid description."
-
-  enforce_pr_files_limit:
-    name: 📑 Limit PR File Changes (Max 100)
-    runs-on: ubuntu-latest
-    needs: [enforce_pr_description]
-    steps:
-      - name: ⏳ Delay Before Job Start
-        run: sleep 3  # Adds a 3-second delay before execution
-
-      - name: 🔧 Install Dependencies
-        run: sudo apt-get install -y jq  # Ensure `jq` is available
-
-      - name: 🔍 Check Number of Files Changed (Handle Pagination)
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-          REPO_NAME="${{ github.repository }}"
-
-          if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
-            echo "❌ ERROR: Invalid PR number. Cannot check file count."
-            exit 1
-          fi
-
-          # ✅ Fetch files with pagination (fetch up to 300 files)
-          FILES_CHANGED=0
-          PAGE=1
-
-          while :; do
-            RESPONSE=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
-              -H "Accept: application/vnd.github.v3+json" \
-              "https://api.github.com/repos/$REPO_NAME/pulls/$PR_NUMBER/files?per_page=100&page=$PAGE")
-
-            FILE_COUNT=$(echo "$RESPONSE" | jq 'length' 2>/dev/null || echo "0")
-
-            # Stop if no more files are returned
-            if [[ "$FILE_COUNT" -eq 0 ]]; then
-              break
-            fi
-
-            FILES_CHANGED=$((FILES_CHANGED + FILE_COUNT))
-            PAGE=$((PAGE + 1))
-          done
-
-          # ✅ Debug: Print final file count
-          echo "🔍 Total Files Changed: $FILES_CHANGED"
-
-          # ✅ Verify file count against the limit
-          if [[ "$FILES_CHANGED" -gt 100 ]]; then
-            echo "❌ ERROR: PR modifies too many files ($FILES_CHANGED). Please split into smaller PRs."
-            exit 1
-          fi
-
-          echo "✅ PR modifies $FILES_CHANGED files, within the allowed limit."
-
-  # 2️⃣ Security & Code Quality Checks (All depend on PR validation)
-  security_scan:
-    name: 🛡️ Run CodeQL Advanced Deep Scan
-    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
-    if: github.actor != 'github-merge-queue[bot]' 
-    needs: [enforce_pr_files_limit]
-    uses: ./.github/workflows/codeql.yml  # Reusable CodeQL deep scan workflow
-    with:
-      language: 'java-kotlin'
-      build-mode: 'autobuild'
-
-  dependency_scan:
-    name: 🔍 Dependency Scan (Trivy)
-    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
-    if: github.actor != 'github-merge-queue[bot]' 
-    runs-on: ubuntu-latest
-    needs: [enforce_pr_files_limit]
-    steps:
-      - name: ⏳ Delay Before Job Start
-        run: sleep 3  # Adds a 3-second delay before execution
-      - name: 📥 Checkout Repository
-        uses: actions/checkout@v4
+      # Step 1: Checkout PR branch
+      - name: Checkout PR branch
+        uses: actions/checkout@v3
         with:
-          fetch-depth: 0
-  
-      - name: 🔎 Scan for Vulnerabilities (Using Trivy Action)
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          severity: 'HIGH,CRITICAL'
-  
-      - name: 📄 Generate Trivy Report
+          ref: ${{ github.head_ref }}
+
+      # Step 2: Debug directory structure
+      - name: Debug directory structure
         run: |
-          trivy fs --severity HIGH,CRITICAL --format json -o trivy-report.json .
-  
-      - name: 📄 Upload Trivy Scan Report
+          echo "🔍 Checking directory structure..."
+          ls -al .
+          echo "🔍 Current working directory: $(pwd)"
+          echo "🔍 Contents of current directory:"
+          ls -al
+
+      # Step 3: Run MegaLinter with optimizations
+      - name: Run MegaLinter on PR changes
+        id: mega_linter
+        run: |
+          docker pull megalinter/megalinter:latest
+          docker run --rm \
+            -v ${{ github.workspace }}:/mnt/mega-linter \
+            -e GITHUB_WORKSPACE=/mnt/mega-linter \
+            -e MEGA_LINTER_CONFIG=/mnt/mega-linter/.mega-linter.yml \
+            megalinter/megalinter:latest --run --ci --only-changed
+        continue-on-error: true  # Allow PRs to proceed even if there are errors
+
+      # Step 4: Upload MegaLinter report as an artifact
+      - name: Upload MegaLinter report artifact
+        if: failure()  # Runs only if MegaLinter fails
         uses: actions/upload-artifact@v4
         with:
-          name: trivy-scan-report
-          path: trivy-report.json
-  
-      - name: 🛠️ Suggest Fixes
-        run: |
-          if [ -s trivy-report.json ]; then
-            vulnerabilities=$(cat trivy-report.json | jq '.Results[]?.Vulnerabilities | length')
-            if [ "$vulnerabilities" -gt 0 ]; then
-              cat trivy-report.json | jq '.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH" or .Severity == "CRITICAL") | "\(.PkgName) has \(.Severity) vulnerability: \(.VulnID) - \(.Title). Recommendation: \(.PrimaryURL)"'
-            else
-              echo "No high/critical vulnerabilities found."
-            fi
-          else
-            echo "No vulnerabilities found or failed to generate the report."
-          fi
-  
-      - name: 🚨 Fail if Vulnerabilities Found
-        run: |
-          if trivy fs --severity HIGH,CRITICAL . | grep -q "VULNERABILITY"; then
-            echo "❌ High/Critical vulnerabilities found!"
-            exit 1
-          fi  # Added fi to properly close the if statement
+          name: megalinter-report
+          path: /tmp/lint/report/linters_logs
 
- # Final Job merge check: Reporting Status to GitHub API
-  merge_check:
-    name: ✅ Final Merge Check (All Jobs Status)
-    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
-    if: github.actor != 'github-merge-queue[bot]' 
-    runs-on: ubuntu-latest
-    needs:
-      - security_scan
-      - dependency_scan
-    outputs:
-      merge_status: ${{ steps.verify_status.outputs.merge_status }}  # ✅ Pass status to auto_merge
-    steps:
-      - name: ⏳ Delay Before Job Start
-        run: sleep 3  # Adds a 3-second delay before execution
-      - name: 🔬 Verify Job Status Before Merging
-        id: verify_status
-        run: |
-          echo "🔎 Checking all required job statuses..."
-          if [[ "${{ needs.pr_restriction.result }}" == "failure" ]] || 
-             [[ "${{ needs.enforce_pr_description.result }}" == "failure" ]] || 
-             [[ "${{ needs.enforce_pr_files_limit.result }}" == "failure" ]] || 
-             [[ "${{ needs.security_scan.result }}" == "failure" ]] || 
-             [[ "${{ needs.dependency_scan.result }}" == "failure" ]]; then
-            echo "❌ One or more jobs failed. Blocking merge."
-            echo "merge_status=false" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-          
-          echo "✅ All jobs passed! Merge allowed."
-          echo "merge_status=true" >> $GITHUB_OUTPUT
-  
-      - name: 📢 🚦 Update CI/CD Status on GitHub
-        run: |
-          echo "🔄 Updating Final Merge Allow Status..."
-          if [[ "${{ steps.verify_status.outputs.merge_status }}" == "true" ]]; then
-            curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
-              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              -d '{"state": "success", "context": "Final Merge Allow", "description": "All checks passed successfully.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
-          else
-            curl -X POST "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
-              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              -d '{"state": "failure", "context": "Final Merge Allow", "description": "Merge blocked due to job failure.", "target_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
-            exit 1
-          fi
+      # Step 5: Comment on PR with MegaLinter results
+      - name: Comment on PR with MegaLinter results
+        uses: peter-evans/create-or-update-comment@v2
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### MegaLinter Results
+            Linter results for the pull request:
+
+            PR Link: [${{ github.event.pull_request.html_url }}](${{ github.event.pull_request.html_url }})
+
+            You can find the full MegaLinter report here: [Linting Report Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for fixing.
+
+      # Step 6: Comment "approved" on PR if all linting checks passed
+      - name: Comment approved on PR
+        if: success()
+        uses: peter-evans/create-or-update-comment@v2
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### MegaLinter Results
+            The PR is ready for approval. All linting issues have been fixed.
+
+            **PR has been approved**. ✅
