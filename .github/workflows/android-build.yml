@@ -39,7 +39,7 @@ jobs:
           ref: ${{ github.head_ref }}
 
       # ✅ Step 3: Debug - List all files in the workspace
-      - name: Debug: List All Files in Workspace
+      - name: Debug- List All Files in Workspace
         run: |
           echo "🔍 Listing all files in the workspace..."
           ls -al ${{ github.workspace }}
