@@ -1,4 +1,4 @@
-package com.edumilestone.app.ui.theme
+package com.edumilestone.modules01.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
