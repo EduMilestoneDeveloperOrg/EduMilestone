@@ -1,43 +1,15 @@
-# ✅ Ignore GitHub Actions Workflow Files
-.github/workflows/**/*
+# 🚀 Ignore Everything Except Listed Files
 
-# ✅ Ignore Gradle build files & dependencies
-**/gradle/**
-**/gradlew
-**/gradlew.bat
-**/settings.gradle.kts
-**/build.gradle.kts
+# 🔹 Ignore all folders except the required ones
+**
 
-# ✅ Ignore Test Files (Unit & Integration Tests)
-**/test/**                
-**/androidTest/**        
-app/src/test/**           
-app/src/androidTest/**    
-milestone/modules01/src/test/**   
-milestone/modules01/src/androidTest/**  
-
-# ✅ Ignore IDE-specific & Temporary Files
-**/.idea/**
-**/.vscode/**
-**/.DS_Store
-**/.git/**
-**/.gitignore
-**/.cache/**
-
-# ✅ Ignore Resource Files That Cause Unnecessary Errors
-**/res/**
-**/res/values/**
-**/res/drawable/**
-**/res/mipmap/**
-
-# ✅ Ignore Configuration & Log Files
-**/*.log
-**/*.lock
-**/*.iml
-**/.editorconfig
-**/.eslintignore
-**/.prettierrc
-**/.prettierignore
-**/lint-results.xml
-**/lint-baseline.xml
-**/mega-linter-report/**
+# ✅ Keep Only These Files/Folders
+!app/build.gradle.kts
+!app/proguard-rules.pro
+!app/src/main/**  # Keeps all files under app/src/main/
+!settings.gradle.kts
+!gradle.properties
+!build.gradle.kts
+!milestone/modules01/build.gradle.kts
+!milestone/build.gradle.kts
+!milestone/modules01/src/main/**  # Keeps all files under milestone/modules01/src/main/
