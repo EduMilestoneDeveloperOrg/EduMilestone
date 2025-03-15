@@ -39,7 +39,7 @@ jobs:
           ref: ${{ github.head_ref }}
 
       # ✅ Step 3: Debug - List all files in the workspace
-      - name: Debug- List All Files in Workspace
+      - name: Debug - List All Files in Workspace
         run: |
           echo "🔍 Listing all files in the workspace..."
           ls -al ${{ github.workspace }}
@@ -48,30 +48,32 @@ jobs:
           echo "🔍 Checking inside root directory..."
           ls -al $GITHUB_WORKSPACE
 
-      # ✅ Step 4: Ensure MegaLinter Configurations Exist
+      # ✅ Step 4: Ensure MegaLinter Configuration Files Exist
       - name: Ensure MegaLinter Configurations Exist
         run: |
           echo "🔍 Checking for MegaLinter configuration files..."
-          if [[ ! -e "$GITHUB_WORKSPACE/.mega-linter.yml" ]]; then
-            echo "❌ .mega-linter.yml is missing! MegaLinter will not use custom configurations."
+          MISSING_FILES=()
+
+          for file in .mega-linter.yml .cspell.json .jscpd.json; do
+            if [[ ! -e "$GITHUB_WORKSPACE/$file" ]]; then
+              echo "❌ $file is missing! Linter might fail."
+              MISSING_FILES+=("$file")
+            fi
+          done
+
+          if [[ ${#MISSING_FILES[@]} -gt 0 ]]; then
+            echo "❌ Missing files: ${MISSING_FILES[*]}"
             exit 1
           fi
-          if [[ ! -e "$GITHUB_WORKSPACE/.cspell.json" ]]; then
-            echo "❌ .cspell.json is missing! Spell check might fail."
-            exit 1
-          fi
-          if [[ ! -e "$GITHUB_WORKSPACE/.jscpd.json" ]]; then
-            echo "❌ .jscpd.json is missing! Duplicate detection might fail."
-            exit 1
-          fi
+
           echo "✅ All necessary configuration files exist."
 
       # ✅ Step 5: Run MegaLinter with explicit config paths
       - name: Run MegaLinter on PR changes
         id: mega_linter
         run: |
-          echo "🚀 Pulling MegaLinter (v6)..."
-          docker pull megalinter/megalinter:v6
+          echo "🚀 Pulling MegaLinter (latest version)..."
+          docker pull megalinter/megalinter:latest
 
           echo "🔍 Running MegaLinter..."
           docker run --rm \
@@ -80,7 +82,7 @@ jobs:
             -e MEGA_LINTER_CONFIG=/mnt/mega-linter/.mega-linter.yml \
             -e SPELL_CONFIG_FILE=/mnt/mega-linter/.cspell.json \
             -e JSCPD_CONFIG_FILE=/mnt/mega-linter/.jscpd.json \
-            megalinter/megalinter:v6 --run --ci --log-level DEBUG
+            megalinter/megalinter:latest --run --ci --log-level DEBUG
         continue-on-error: true  # Allow PRs to proceed even if there are errors
 
       # ✅ Step 6: Upload MegaLinter report as an artifact
@@ -103,7 +105,7 @@ jobs:
             - 📌 **PR Link**: [${{ github.event.pull_request.html_url }}](${{ github.event.pull_request.html_url }})
             - 📄 **MegaLinter Report**: [Linting Report Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-      # ✅ Step 8: Comment "approved" on PR if all linting checks passed
+      # ✅ Step 8: Approve PR if No Errors
       - name: Approve PR if No Errors
         if: success()
         uses: peter-evans/create-or-update-comment@v2
