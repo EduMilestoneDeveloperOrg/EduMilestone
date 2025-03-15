@@ -1,32 +1,35 @@
 ---
 ENABLE_LINTERS: ""  # ✅ Disable all linters, then manually enable only required ones
+
 linters:
   disable:
-    - SPELL_CSPELL         # ✅ Ignore spell checking
-    - SPELL_MISSPELL       # ✅ Ignore dictionary-based spell-check
-    - COPYPASTE_JSCPD      # ✅ Ignore duplicate file detection
-    - XML_XMLLINT          # ✅ Ignore XML validation errors (AAPT issues)
-    - YAML_YAMLLINT        # ✅ Ignore YAML indentation errors
-    - YAML_PRETTIER        # ✅ Ignore YAML formatting warnings
-    - ACTION_ACTIONLINT    # ✅ Ignore GitHub Actions false positives
-    - KOTLIN_KTLINT        # ✅ Ignore minor Kotlin formatting issues
-    - MARKDOWN_MARKDOWNLINT # ✅ Ignore markdown trailing spaces
-    - PROPERTIES_CHECKSTYLE # ✅ Ignore Java properties format errors
-    - JSON_JSONLINT        # ✅ Ignore strict JSON format validation
+    - SPELL_CSPELL           # ✅ Ignore spell checking
+    - SPELL_MISSPELL         # ✅ Ignore dictionary-based spell-check
+    - COPYPASTE_JSCPD        # ✅ Ignore duplicate file detection
+    - XML_XMLLINT            # ✅ Ignore XML validation errors (AAPT issues)
+    - YAML_YAMLLINT          # ✅ Ignore YAML indentation errors
+    - YAML_PRETTIER          # ✅ Ignore YAML formatting warnings
+    - ACTION_ACTIONLINT      # ✅ Ignore GitHub Actions Webhook event errors  
+    - KOTLIN_KTLINT          # ✅ Ignore minor Kotlin formatting issues
+    - MARKDOWN_MARKDOWNLINT  # ✅ Ignore markdown trailing spaces
+    - PROPERTIES_CHECKSTYLE  # ✅ Ignore Java properties format errors
+    - JSON_JSONLINT          # ✅ Ignore strict JSON format validation
 
 # ✅ Exclude specific folders from being scanned
 exclude:
-  - "milestone/modules01/src/main/res/**/*"  # ✅ Fully ignore resource XML files
+  - "milestone/modules01/src/main/res/**/*"   # ✅ Fully ignore resource XML files
   - "app/src/main/res/**/*"
-  - "**/gradle/**/*"  # ✅ Fully ignore Gradle build files
+  - "**/gradle/**/*"                        # ✅ Fully ignore Gradle build files
   - "**/node_modules/**/*"
-  - "**/tests/**/*"  # ✅ Ignore test files
-  - "**/build/**/*"  # ✅ Ignore build artifacts
+  - "**/tests/**/*"                        # ✅ Ignore test files
+  - "**/build/**/*"                        # ✅ Ignore build artifacts
   - "**/backup_rules.xml"
+  - ".github/workflows/**/*"               # ✅ Ignore ALL GitHub Actions workflow files
 
 # ✅ Ignore all workflow YAML files from linting
 ignore:
-  - ".github/workflows/**/*"
+  - ".github/workflows/auto_merge.yml"  # ✅ Force ignore `auto_merge.yml`
+  
 
 # ✅ Ignore unnecessary spell-check warnings
 TYPOS_FILTER_REGEX_EXCLUDE: |
