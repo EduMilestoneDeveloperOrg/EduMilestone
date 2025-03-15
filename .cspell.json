@@ -1,4 +1,10 @@
 {
+  "ignorePatterns": [
+    "**/ui/theme/Type.kt",
+    "**/ui/theme/Color.kt",
+    "**/ui/theme/Theme.kt",
+    "**/res/**"
+  ],
   "words": [
     "androidx",
     "mipmap",
@@ -15,6 +21,14 @@
     "classpath",
     "codeql",
     "Intelli",
-    "microservices"
+    "microservices",
+    "JSCOD",
+    "elif",
+    "venv",
+    "KTLINT",
+    "MARKDOWNLINT",
+    "Xdock",
+    "cygpath",
+    "OURCYGPATTERN"
   ]
 }
