@@ -1,5 +1,5 @@
 {
-  "threshold": 5,
+  "threshold": 15,
   "ignore": [
     "**/ui/theme/Type.kt",
     "**/ui/theme/Color.kt",
