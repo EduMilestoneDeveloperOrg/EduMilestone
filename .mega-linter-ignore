@@ -1,7 +1,13 @@
-# 🚀 Ignore Everything Except Listed Files
+# 🚀 Enable all linters
 
-# 🔹 Ignore all folders except the required ones
-**
+linters:
+  # Enable all linters
+  all:
+    enabled: true
+
+# 🚀 Ignore Everything Except Listed Files (optional based on previous request)
+# Ignore all files and folders by default
+**/*
 
 # ✅ Keep Only These Files/Folders
 !app/build.gradle.kts
