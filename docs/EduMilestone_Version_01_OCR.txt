@@ -80,10 +80,10 @@ EduMilestone/                                           # 📌 Root Project Dire
 │   │   ├── AndroidManifest.xml                         # 🔹 App Permissions & Entry Points
 │   │   ├── proguard-rules.pro                          # 🔹 Code Obfuscation & Security
 ├── milestone/
-│	├── milestone_modules_01/
+│	├── modules01/
 │	│   ├── src/
 │	│   │   ├── main/
-│	│   │   │   ├── java/com/edumilestone/milestone_modules_01/ 		# ✅📌 Milestone 01 Modules: Product Tools Section:Independent Modular Heavy Services
+│	│   │   │   ├── java/com/edumilestone/modules01/ 			# ✅📌 Milestone 01 Modules: Product Tools Section:Independent Modular Heavy Services
 │ 	│   │   │   │   ├── core/                       					# 📌 Local Core Functionality for Product Tools Section
 │	│ 	│   │   │   │   ├── utils/            							# 🔹 Local for Product Tools Section Helper functions, constants, logs
 │   │   │   │   │   │   │   ├── PreprocessingUtils.kt     				# ⭐ Helper functions for preprocessing
@@ -93,11 +93,11 @@ EduMilestone/                                           # 📌 Root Project Dire
 │	│ 	│   │   │   │   ├── analytics/                					# 🔹 Local for Product Tools Section Tracks OCR usage & errors
 │   │   │   │   │   │	│   ├── AnalyticsManager.kt       				# ⭐ Local for Product 1 - Tools Section Handles analytics
 │ 	│   │   │   │   ├── di/                    							# 🔹 Module Dependency Injection
-│   │   │   │   │   │	└── Milestone01Module.kt	
-│   │   │   │	│	├── products_tools/									# 📌 Products Tools Section (Feature-based on modules 01):Independent Modular Heavy Services
+│   │   │   │   │   │	└── Milestone01Module.kt
+│   │   │   │	│	├── tools/									        # 📌 Products Tools Section (Feature-based on modules 01):Independent Modular Heavy Services
 │	│	│	│	│	│	├── product_tools_main_app.kt             		# 📌 Product Tools - Main Application
 │	│	│   │   │   │   ├── features/              						# 📌 Features within Milestone Modules 01 Products Tools Section
-│	│	│   │   │   │   │   ├── tools_ocr/                				# 🔹 OCR (Image to Text) - Version 01 Release:Light Weight Independent Microservices 
+│	│	│   │   │   │   │   ├── ocr/                					# 🔹 OCR (Image to Text) - Version 01 Release:Light Weight Independent Microservices
 │	│	│   │   │   │   │   │   ├── preprocessing/  					# 🟢 Image Preprocessing (Grayscale, Noise Removal)
 │	│   │   │   │   │   │   │   │   ├── BlurDetection.kt          		# ⭐ Detects blurry images
 │	│   │   │   │   │   │   │   │   ├── ImageResizer.kt           		# ⭐ Resizes images for OCR

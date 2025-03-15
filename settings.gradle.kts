@@ -22,4 +22,4 @@ dependencyResolutionManagement {
 rootProject.name = "EduMilestone"
 include(":app")
 include(":milestone")
-include(":milestone:milestone_modules_01")
+include(":milestone:modules01")

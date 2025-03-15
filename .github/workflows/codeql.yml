@@ -4,11 +4,20 @@ on:
   workflow_call:  # This allows the workflow to be called from other workflows
     inputs:
       language:
+        description: "Kotlin Programming language to analyze" # ✅ Added description
         required: true  # Language parameter is required
         type: string
       build-mode:
+        description: "Build mode for CodeQL analysis" # ✅ Added description
         required: true  # Build mode parameter is required
         type: string
+
+permissions:
+  pull-requests: write
+  contents: write
+  security-events: write  # Required for CodeQL scanning
+  actions: write
+  statuses: write
 
 jobs:
   analyze:
@@ -45,7 +54,7 @@ jobs:
     - if: matrix.build-mode == 'manual'
       shell: bash
       run: |
-        echo 'Please run manual build commands'
+        echo "Please run manual build commands"
         exit 1  # Fail the job if manual build commands aren't provided
 
     # Step 4: Perform the actual CodeQL analysis using the initialized setup

@@ -1,9 +1,18 @@
 name: Auto Merge
 
 on:
-  merge_group:
-    branches:
-      - master  # ✅ Runs only when PR enters the merge queue
+  workflow_run:
+    workflows: ["Android CI/CD Pipeline"]  # ✅ Matches your master workflow name
+    types:
+      - completed  # ✅ Triggers when the workflow finishes
+
+permissions:
+  pull-requests: write
+  contents: write
+  security-events: write  # Required for CodeQL scanning
+  actions: write
+  statuses: write
+
 jobs:
   auto_merge:
     # ❌ Prevents workflow execution if triggered by `github-merge-queue`
