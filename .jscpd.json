@@ -1,8 +1,12 @@
 {
-  "ignorePatterns": [
+  "threshold": 5,
+  "ignore": [
     "**/ui/theme/Type.kt",
     "**/ui/theme/Color.kt",
     "**/ui/theme/Theme.kt",
-    "**/res/**"
+    "**/res/**",
+    "**/gradle/**",
+    "**/node_modules/**",
+    "**/build/**"
   ]
 }
