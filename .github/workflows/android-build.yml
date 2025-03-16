@@ -36,22 +36,21 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
 
-      # ✅ Step 3: Fetch PR Author's Email
-      - name: Fetch PR Author's Email
+      # ✅ Step 3: Fetch Commit Author's Email (Instead of PR Author)
+      - name: Fetch Commit Author's Email
         id: fetch_email
         run: |
-          PR_USER="${{ github.event.pull_request.user.login }}"
-          EMAIL=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          "https://api.github.com/users/$PR_USER" | jq -r '.email')
+          # Get the email of the last commit author
+          EMAIL=$(git log -1 --pretty=format:'%ae')
+          echo "Commit Author Email: $EMAIL"
 
-          # Default to a backup email if the user's email is private
-          if [[ "$EMAIL" == "null" || -z "$EMAIL" ]]; then
+          # Default to a backup email if the commit email is private
+          if [[ "$EMAIL" == "" || "$EMAIL" == "null" ]]; then
             EMAIL="default-notification@example.com"
           fi
 
+          echo "Final Email to Use: $EMAIL"
           echo "EMAIL=$EMAIL" >> $GITHUB_ENV
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ✅ Step 4: Run MegaLinter with Reduced Logging & Email Reporting
       - name: MegaLinter
