@@ -84,7 +84,19 @@ jobs:
             megalinter/megalinter:v5 --run --ci --log-level DEBUG
         continue-on-error: true  # Allow PRs to proceed even if there are errors
 
-      # ✅ Step 6: Upload MegaLinter report as an artifact (Always runs)
+      # ✅ Step 6: List Linted Files
+      - name: List Linted Files
+        run: |
+          echo "🔍 Listing all linted files..."
+          grep -oP 'linted: \K.*' ${{ github.workspace }}/megalinter-reports/linter-report.txt || echo "⚠️ No linted files found!"
+
+      # ✅ Step 7: List Linter Rules
+      - name: List Linter Rules
+        run: |
+          echo "🔍 Listing all linter rules applied..."
+          grep -oP 'rule: \K.*' ${{ github.workspace }}/megalinter-reports/linter-report.txt || echo "⚠️ No linter rules applied!"
+
+      # ✅ Step 8: Upload MegaLinter report as an artifact (Always runs)
       - name: Upload MegaLinter report artifact
         if: always()  # Ensure report is uploaded even if the linter fails
         uses: actions/upload-artifact@v4
@@ -92,7 +104,7 @@ jobs:
           name: megalinter-report
           path: ${{ github.workspace }}/megalinter-reports  # Make sure this path is correct and reports are generated
 
-      # ✅ Step 7: Comment on PR with MegaLinter results
+      # ✅ Step 9: Comment on PR with MegaLinter results
       - name: Comment on PR with MegaLinter results
         uses: peter-evans/create-or-update-comment@v2
         with:
@@ -103,7 +115,7 @@ jobs:
             - 📌 **PR Link**: [${{ github.event.pull_request.html_url }}](${{ github.event.pull_request.html_url }})
             - 📄 **MegaLinter Report**: [Linting Report Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-      # ✅ Step 8: Approve PR if No Errors
+      # ✅ Step 10: Approve PR if No Errors
       - name: Approve PR if No Errors
         if: success()
         uses: peter-evans/create-or-update-comment@v2
