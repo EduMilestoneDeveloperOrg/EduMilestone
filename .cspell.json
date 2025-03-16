@@ -15,12 +15,10 @@
     "**/vendor",
     "**/.idea",
     "**/.vscode",
-    "**/app/androidTest/**",
-    "**/app/test/**",
-    "**/modules01/androidTest/**",
-    "**/modules01/test/**",
-    "**/src/androidTest/**",
-    "**/src/test/**"
+    "**/app/src/androidTest/**",
+    "**/app/src/test/**",
+    "**/milestone/modules01/src/androidTest/**",
+    "**/milestone/modules01/src/test/**"
   ],
   "words": [
     "Intelli",
@@ -43,12 +41,18 @@
     "microservices",
     "mipmap",
     "msys",
+    "MSYS",
     "ocr",
     "OURCYGPATTERN",
     "proguard",
     "sharedpref",
     "toolscore",
     "venv",
-    "xdock"
+    "xdock",
+    "Xdock",
+    "icns",
+    "cygpath",
+    "maxdepth",
+    "mindepth"
   ]
 }
