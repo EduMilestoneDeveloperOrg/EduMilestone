@@ -49,27 +49,9 @@ jobs:
           ls -al $GITHUB_WORKSPACE
 
       # ✅ Step 4: Run MegaLinter with Detailed Logging
-      - name: Run MegaLinter on PR changes
-        id: mega_linter
-        run: |
-          echo "🚀 Pulling MegaLinter (latest version)..."
-          docker pull megalinter/megalinter:latest
-          echo "🔍 Running MegaLinter with detailed logging..."
-          docker run --rm \
-            -v "${{ github.workspace }}:/mnt/mega-linter" \
-            -e GITHUB_WORKSPACE="/mnt/mega-linter" \
-            -e MEGA_LINTER_CONFIG="/mnt/mega-linter/.mega-linter.yml" \
-            -e MEGA_LINTER_IGNORE_FILE="/mnt/mega-linter/.mega-linter-ignore" \
-            -e SPELL_CSPELL_CONFIG_FILE="/mnt/mega-linter/.cspell.json" \
-            -e MEGA_LINTER_REPORT_DIR="/mnt/mega-linter/megalinter-reports" \
-            -e LOG_LEVEL="DEBUG" \
-            -e PRINT_LINTERS_TABLE="true" \
-            -e PRINT_ALL_FILES="true" \
-            -e PRINT_SUMMARY="true" \
-            -e DISABLE_ERRORS="true" \
-            megalinter/megalinter:latest --run --ci --log-level DEBUG || true
-        continue-on-error: false
-
+      - name: MegaLinter
+        uses: oxsecurity/megalinter@v8.4.2
+       
       # ✅ Step 5: Verify MegaLinter Reports Before Uploading
       - name: Check MegaLinter Reports
         run: |
