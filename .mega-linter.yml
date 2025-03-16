@@ -15,14 +15,10 @@ GIT_FILTER_REPO: true  # ✅ Exclude all ignored files from linting
 
 # ✅ Exclude common test & generated directories
 EXCLUDED_DIRECTORIES:
-  - app/androidTest
-  - app/test
-  - modules01/androidTest
-  - modules01/test
-  - milestone/modules01/androidTest
-  - milestone/modules01/test
-  - src/androidTest
-  - src/test
+  - app/src/androidTest
+  - app/src/test
+  - milestone/modules01/src/androidTest/
+  - milestone/modules01/src/test/
 
 # ✅ Exclude unnecessary files
 EXCLUDED_FILES:
