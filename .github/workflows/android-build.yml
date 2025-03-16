@@ -48,10 +48,26 @@ jobs:
           echo "🔍 Checking inside root directory..."
           ls -al $GITHUB_WORKSPACE
 
-      # ✅ Step 4: Run MegaLinter with Detailed Logging
+      # ✅ Step 4: Run MegaLinter with Reduced Logging
       - name: MegaLinter
         uses: oxsecurity/megalinter@v8.4.2
-       
+        env:
+          GITHUB_WORKSPACE: "/mnt/mega-linter"
+          MEGA_LINTER_CONFIG: "/mnt/mega-linter/.mega-linter.yml"
+          MEGA_LINTER_IGNORE_FILE: "/mnt/mega-linter/.mega-linter-ignore"
+          SPELL_CSPELL_CONFIG_FILE: "/mnt/mega-linter/.cspell.json"
+          MEGA_LINTER_REPORT_DIR: "/mnt/mega-linter/megalinter-reports"
+          LOG_LEVEL: "INFO"  # ✅ Less logs, keeps necessary info
+          PRINT_LINTERS_TABLE: "false"  # ✅ Disable linter list
+          PRINT_ALL_FILES: "false"  # ✅ Disable full file list in logs
+          PRINT_SUMMARY: "true"  # ✅ Keep summary for quick review
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PRINT_SUMMARY: true
+          LOG_LEVEL: INFO
+          MEGA_LINTER_CONFIG: .mega-linter.yml
+          filter_regex_exclude: ".*(test|androidTest).*"
+     
       # ✅ Step 5: Verify MegaLinter Reports Before Uploading
       - name: Check MegaLinter Reports
         run: |
