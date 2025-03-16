@@ -5,8 +5,6 @@ on:
     types: [opened, synchronize, reopened, edited, ready_for_review]
     branches:
       - master
-    paths:
-      - '**'
   push:
     branches:
       - master
@@ -38,36 +36,57 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
 
-      # ✅ Step 3: Debug - List all files in the workspace
-      - name: Debug - List All Files in Workspace
+      # ✅ Step 3: Fetch PR Author's Email
+      - name: Fetch PR Author's Email
+        id: fetch_email
         run: |
-          echo "🔍 Listing all files in the workspace..."
-          ls -al ${{ github.workspace }}
-          echo "🔍 Checking inside .github folder..."
-          ls -al ${{ github.workspace }}/.github || echo "⚠️ .github folder missing!"
-          echo "🔍 Checking inside root directory..."
-          ls -al $GITHUB_WORKSPACE
+          PR_USER="${{ github.event.pull_request.user.login }}"
+          EMAIL=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/users/$PR_USER" | jq -r '.email')
 
-      # ✅ Step 4: Run MegaLinter with Reduced Logging
+          # Default to a backup email if the user's email is private
+          if [[ "$EMAIL" == "null" || -z "$EMAIL" ]]; then
+            EMAIL="default-notification@example.com"
+          fi
+
+          echo "EMAIL=$EMAIL" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ✅ Step 4: Run MegaLinter with Reduced Logging & Email Reporting
       - name: MegaLinter
         uses: oxsecurity/megalinter@v8.4.2
         env:
-          GITHUB_WORKSPACE: "/mnt/mega-linter"
-          MEGA_LINTER_CONFIG: "/mnt/mega-linter/.mega-linter.yml"
-          MEGA_LINTER_IGNORE_FILE: "/mnt/mega-linter/.mega-linter-ignore"
-          SPELL_CSPELL_CONFIG_FILE: "/mnt/mega-linter/.cspell.json"
-          MEGA_LINTER_REPORT_DIR: "/mnt/mega-linter/megalinter-reports"
-          LOG_LEVEL: "INFO"  # ✅ Less logs, keeps necessary info
-          PRINT_LINTERS_TABLE: "false"  # ✅ Disable linter list
-          PRINT_ALL_FILES: "false"  # ✅ Disable full file list in logs
-          PRINT_SUMMARY: "true"  # ✅ Keep summary for quick review
-        with:
+          # ✅ GitHub Token
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PRINT_SUMMARY: true
-          LOG_LEVEL: INFO
-          MEGA_LINTER_CONFIG: .mega-linter.yml
-          filter_regex_exclude: ".*(test|androidTest).*"
-     
+
+          # ✅ Essential MegaLinter Configuration
+          GITHUB_WORKSPACE: "/github/workspace"
+          MEGA_LINTER_CONFIG: "/github/workspace/.mega-linter.yml"
+          MEGA_LINTER_IGNORE_FILE: "/github/workspace/.mega-linter-ignore"
+          SPELL_CSPELL_CONFIG_FILE: "/github/workspace/.cspell.json"
+          MEGA_LINTER_REPORT_DIR: "/github/workspace/megalinter-reports"
+
+          # ✅ Logging & Filtering
+          LOG_LEVEL: "INFO"
+          PRINT_LINTERS_TABLE: "false"
+          PRINT_ALL_FILES: "false"
+          PRINT_SUMMARY: "true"
+          FILTER_REGEX_EXCLUDE: ".*(test|androidTest).*"
+
+          # ✅ Error Handling & Auto-Fixing
+          DISABLE_ERRORS: "false"
+          FAIL_IF_ERROR: "true"
+          VALIDATE_ALL_CODEBASE: "true"
+          APPLY_FIXES: "all"
+
+          # ✅ Email Reporting Configuration (Using Outlook SMTP)
+          EMAIL_REPORTER_EMAIL: ${{ env.EMAIL }}  # ✅ Send report to PR requester
+          EMAIL_REPORTER_SMTP_SERVER: "smtp.office365.com"  # ✅ Outlook SMTP Server
+          EMAIL_REPORTER_SMTP_PORT: "587"
+          EMAIL_REPORTER_SMTP_USERNAME: ${{ secrets.OUTLOOK_USER }}  # ✅ Outlook Email
+          EMAIL_REPORTER_SMTP_PASSWORD: ${{ secrets.OUTLOOK_APP_PASSWORD }}  # ✅ Outlook App Password
+
       # ✅ Step 5: Verify MegaLinter Reports Before Uploading
       - name: Check MegaLinter Reports
         run: |
