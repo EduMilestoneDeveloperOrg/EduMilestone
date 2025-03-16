@@ -1,4 +1,4 @@
-# MegaLinter Configuration File
+# ✅ Optimized MegaLinter Configuration File
 ---
 # ✅ Enable all linters
 ENABLED_LINTERS:
@@ -10,15 +10,15 @@ SPELL_CSPELL_CONFIG_FILE: ".cspell.json"
 # ✅ Ensure .mega-linter-ignore is used
 MEGA_LINTER_IGNORE_FILE: ".mega-linter-ignore"
 
-# ✅ Automatically exclude all files from .gitignore
-GIT_FILTER_REPO: true  # ✅ Exclude all ignored files from linting
+# ✅ Exclude ignored files from Git tracking
+GIT_FILTER_REPO: true
 
-# ✅ Exclude common test & generated directories
+# ✅ Exclude unnecessary directories to optimize linting
 EXCLUDED_DIRECTORIES:
   - app/src/androidTest
   - app/src/test
-  - milestone/modules01/src/androidTest/
-  - milestone/modules01/src/test/
+  - milestone/modules01/src/androidTest
+  - milestone/modules01/src/test
 
 # ✅ Exclude unnecessary files
 EXCLUDED_FILES:
@@ -40,5 +40,5 @@ EXCLUDED_FILES:
 # ✅ Set logging level to DEBUG for troubleshooting
 LOG_LEVEL: DEBUG
 
-# ✅ Fail the pipeline if errors are found
+# ✅ Fail the pipeline if genuine errors are found
 DISABLE_ERRORS: false
