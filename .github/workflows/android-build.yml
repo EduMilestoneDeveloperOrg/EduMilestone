@@ -6,7 +6,7 @@ on:
     branches:
       - master
     paths:
-      - '**'  # Lint all files in the repository
+      - '**'
   push:
     branches:
       - master
@@ -69,22 +69,36 @@ jobs:
       # ✅ Step 6: List Linted Files
       - name: List Linted Files
         run: |
-          echo "🔍 Listing all linted files..."
-          grep -oP 'linted: \K.*' ${{ github.workspace }}/megalinter-reports/linter-report.txt || echo "⚠️ No linted files found!"
+          echo "🔍 Checking if MegaLinter report exists..."
+          REPORT_FILE="${{ github.workspace }}/megalinter-reports/linters_logs/linter-report.txt"
+          
+          if [[ -f "$REPORT_FILE" ]]; then
+            echo "🔍 Listing all linted files..."
+            awk '/linted:/{print $0}' "$REPORT_FILE" || echo "⚠️ No linted files found!"
+          else
+            echo "⚠️ MegaLinter report not found at $REPORT_FILE!"
+          fi
 
       # ✅ Step 7: List Linter Rules
       - name: List Linter Rules
         run: |
-          echo "🔍 Listing all linter rules applied..."
-          grep -oP 'rule: \K.*' ${{ github.workspace }}/megalinter-reports/linter-report.txt || echo "⚠️ No linter rules applied!"
+          echo "🔍 Checking if MegaLinter report exists..."
+          REPORT_FILE="${{ github.workspace }}/megalinter-reports/linters_logs/linter-report.txt"
+          
+          if [[ -f "$REPORT_FILE" ]]; then
+            echo "🔍 Listing all linter rules applied..."
+            awk '/rule:/{print $0}' "$REPORT_FILE" || echo "⚠️ No linter rules applied!"
+          else
+            echo "⚠️ MegaLinter report not found at $REPORT_FILE!"
+          fi
 
       # ✅ Step 8: Upload MegaLinter report as an artifact (Always runs)
       - name: Upload MegaLinter report artifact
-        if: always()  # Ensure report is uploaded even if the linter fails
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: megalinter-report
-          path: ${{ github.workspace }}/megalinter-reports  # Make sure this path is correct and reports are generated
+          path: ${{ github.workspace }}/megalinter-reports  # Ensure this path is correct
 
       # ✅ Step 9: Comment on PR with MegaLinter results
       - name: Comment on PR with MegaLinter results
