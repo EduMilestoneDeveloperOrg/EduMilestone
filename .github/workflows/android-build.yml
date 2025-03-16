@@ -48,25 +48,22 @@ jobs:
           echo "🔍 Checking inside root directory..."
           ls -al $GITHUB_WORKSPACE
 
-      # ✅ Step 4: Skip configuration check (since the config files are missing)
-
-      # ✅ Step 5: Run MegaLinter on PR changes (lint all files, excluding .gitignore)
+      # ✅ Step 4: Run MegaLinter on PR changes (using .cspell.json)
       - name: Run MegaLinter on PR changes
         id: mega_linter
         run: |
           echo "🚀 Pulling MegaLinter (latest version)..."
           docker pull megalinter/megalinter:latest  # Pulling the latest image
-          echo "🔍 Running MegaLinter..."
+          echo "🔍 Running MegaLinter with custom spell dictionary..."
           docker run --rm \
             -v ${{ github.workspace }}:/mnt/mega-linter \
             -e GITHUB_WORKSPACE=/mnt/mega-linter \
-            -e MEGA_LINTER_CONFIG=/mnt/mega-linter/.mega-linter.yml \
-            -e MEGA_LINTER_IGNORE_FILE=/mnt/mega-linter/.mega-linter-ignore \
+            -e SPELL_CSPELL_CONFIG_FILE=/mnt/mega-linter/.cspell.json \  # Added custom spell config
             -e MEGA_LINTER_REPORT_DIR=/mnt/mega-linter/megalinter-reports \
-            megalinter/megalinter:latest --run --ci --log-level DEBUG --linters all --config /mnt/mega-linter/.mega-linter.yml
-        continue-on-error: true  # Allow PRs to proceed even if there are errors
+            megalinter/megalinter:latest --run --ci --log-level DEBUG --linters all
+        continue-on-error: false  # Allow PRs to proceed even if there are errors
 
-      # ✅ Step 6: List Linted Files
+      # ✅ Step 5: List Linted Files
       - name: List Linted Files
         run: |
           echo "🔍 Checking if MegaLinter report exists..."
@@ -79,7 +76,7 @@ jobs:
             echo "⚠️ MegaLinter report not found at $REPORT_FILE!"
           fi
 
-      # ✅ Step 7: List Linter Rules
+      # ✅ Step 6: List Linter Rules
       - name: List Linter Rules
         run: |
           echo "🔍 Checking if MegaLinter report exists..."
@@ -92,7 +89,7 @@ jobs:
             echo "⚠️ MegaLinter report not found at $REPORT_FILE!"
           fi
 
-      # ✅ Step 8: Upload MegaLinter report as an artifact (Always runs)
+      # ✅ Step 7: Upload MegaLinter report as an artifact (Always runs)
       - name: Upload MegaLinter report artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -100,7 +97,7 @@ jobs:
           name: megalinter-report
           path: ${{ github.workspace }}/megalinter-reports  # Ensure this path is correct
 
-      # ✅ Step 9: Comment on PR with MegaLinter results
+      # ✅ Step 8: Comment on PR with MegaLinter results
       - name: Comment on PR with MegaLinter results
         uses: peter-evans/create-or-update-comment@v2
         with:
@@ -111,7 +108,7 @@ jobs:
             - 📌 **PR Link**: [${{ github.event.pull_request.html_url }}](${{ github.event.pull_request.html_url }})
             - 📄 **MegaLinter Report**: [Linting Report Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-      # ✅ Step 10: Approve PR if No Errors
+      # ✅ Step 9: Approve PR if No Errors
       - name: Approve PR if No Errors
         if: success()
         uses: peter-evans/create-or-update-comment@v2
