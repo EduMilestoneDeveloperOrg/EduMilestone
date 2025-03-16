@@ -1,10 +1,19 @@
 # MegaLinter Configuration File
 ---
-# ✅ Explicitly enable all linters instead of using EXTENDS: "advanced_all"
+# ✅ Enable all linters
 ENABLED_LINTERS:
-  - ALL  # Enables all linters
+  - ALL
 
-# ✅ Exclude test directories to prevent unnecessary linting
+# ✅ Use a custom spell-check dictionary
+SPELL_CSPELL_CONFIG_FILE: ".cspell.json"
+
+# ✅ Ensure .mega-linter-ignore is used
+MEGA_LINTER_IGNORE_FILE: ".mega-linter-ignore"
+
+# ✅ Automatically exclude all files from .gitignore
+GIT_FILTER_REPO: true  # ✅ Exclude all ignored files from linting
+
+# ✅ Exclude common test & generated directories
 EXCLUDED_DIRECTORIES:
   - app/androidTest
   - app/test
@@ -15,26 +24,25 @@ EXCLUDED_DIRECTORIES:
   - src/androidTest
   - src/test
 
-# ✅ Use a custom spell-check dictionary
-SPELL_CSPELL_CONFIG_FILE: ".cspell.json"
-
-# ✅ Exclude unnecessary files and auto-generated content
+# ✅ Exclude unnecessary files
 EXCLUDED_FILES:
   - "**/*.lock"
   - "**/*.log"
   - "**/*.min.js"
+  - "**/*.bundle.js"
   - "**/node_modules/**"
   - "**/vendor/**"
   - "**/.gradle/**"
+  - "**/.idea/**"
+  - "**/.vscode/**"
+  - "**/coverage/**"
+  - "**/reports/**"
+  - "**/test-results/**"
+  - "**/build/**"
+  - "**/dist/**"
 
-# ✅ Set logging level to debug for troubleshooting
+# ✅ Set logging level to DEBUG for troubleshooting
 LOG_LEVEL: DEBUG
 
 # ✅ Fail the pipeline if errors are found
 DISABLE_ERRORS: false
-
-# ✅ Maximum duplicate code percentage allowed
-JSDUPLICATE_MAX_PERCENTAGE: 15
-
-# ✅ Set max line length for linters
-MAX_LINE_LENGTH: 120
