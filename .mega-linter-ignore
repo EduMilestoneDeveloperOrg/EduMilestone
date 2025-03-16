@@ -1,12 +1,12 @@
 # ✅ Ignore specific test directories (absolute paths for precision)
- /mnt/mega-linter/app/src/androidTest/**
- /mnt/mega-linter/app/src/test/**
- /mnt/mega-linter/milestone/modules01/src/androidTest/**
- /mnt/mega-linter/milestone/modules01/src/test/**
+/mnt/mega-linter/app/src/androidTest/**
+/mnt/mega-linter/app/src/test/**
+/mnt/mega-linter/milestone/modules01/src/androidTest/**
+/mnt/mega-linter/milestone/modules01/src/test/**
 
 # ✅ Ignore test-related directories recursively
 **/test/**
-**/androidTest/**
+**/androidTest**/
 
 # ✅ Ignore dependency and build directories
 **/node_modules/**
@@ -17,11 +17,11 @@
 # ✅ Ignore version control & CI/CD directories
 **/.git/**
 **/.github/**
-**/.gradle/**
+**/.gradle**/
 
 # ✅ Ignore IDE & editor-specific files
 **/.idea/**
-**/.vscode/**
+**/.vscode**/
 
 # ✅ Ignore dependency lock files and logs
 **/*.lock
