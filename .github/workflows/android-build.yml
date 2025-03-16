@@ -65,6 +65,7 @@ jobs:
             -e LOG_LEVEL=TRACE \
             -e PRINT_LINTERS_TABLE=true \
             -e PRINT_ALL_FILES=true \
+            -e PRINT_SUMMARY=true \  # ✅ Ensures summary is always printed
             megalinter/megalinter:latest --run --ci --log-level TRACE
         continue-on-error: false
 
