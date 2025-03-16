@@ -4,18 +4,3 @@ linters:
   # Enable all linters
   all:
     enabled: true
-
-# 🚀 Ignore Everything Except Listed Files (optional based on previous request)
-# Ignore all files and folders by default
-**/*
-
-# ✅ Keep Only These Files/Folders
-!app/build.gradle.kts
-!app/proguard-rules.pro
-!app/src/main/**  # Keeps all files under app/src/main/
-!settings.gradle.kts
-!gradle.properties
-!build.gradle.kts
-!milestone/modules01/build.gradle.kts
-!milestone/build.gradle.kts
-!milestone/modules01/src/main/**  # Keeps all files under milestone/modules01/src/main/
