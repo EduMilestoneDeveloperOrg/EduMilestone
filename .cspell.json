@@ -1,0 +1,41 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "ignorePaths": [
+    "node_modules",
+    "build",
+    "dist",
+    ".git",
+    ".github",
+    "gradlew",
+    "**/*.lock",
+    "**/*.log"
+  ],
+  "words": [
+    "androidx",
+    "edumilestone",
+    "proguard",
+    "mipmap",
+    "codeql",
+    "gradlew",
+    "microservices",
+    "cygwin",
+    "msys",
+    "xdock",
+    "classpath",
+    "ocr",
+    "sharedpref",
+    "toolscore",
+    "mergeable",
+    "elif",
+    "aapt",
+    "JAVACMD",
+    "ROOTDIRSRAW",
+    "CYGPATTERN",
+    "OURCYGPATTERN",
+    "esac",
+    "Dorg",
+    "appname",
+    "venv"
+  ]
+}
