@@ -73,7 +73,7 @@ jobs:
         id: mega_linter
         run: |
           echo "🚀 Pulling MegaLinter (latest version)..."
-          docker pull megalinter/megalinter:latest
+          docker pull megalinter/megalinter:latest  # Pulling the latest image
           echo "🔍 Running MegaLinter..."
           docker run --rm \
             -v ${{ github.workspace }}:/mnt/mega-linter \
@@ -81,7 +81,7 @@ jobs:
             -e MEGA_LINTER_CONFIG=/mnt/mega-linter/.mega-linter.yml \
             -e MEGA_LINTER_IGNORE_FILE=/mnt/mega-linter/.mega-linter-ignore \
             -e MEGA_LINTER_REPORT_DIR=/mnt/mega-linter/megalinter-reports \
-            megalinter/megalinter:v6 --run --ci --log-level DEBUG --linters all --config .mega-linter.yml
+            megalinter/megalinter:latest --run --ci --log-level DEBUG --linters all --config /mnt/mega-linter/.mega-linter.yml
         continue-on-error: true  # Allow PRs to proceed even if there are errors
 
       # ✅ Step 6: List Linted Files
