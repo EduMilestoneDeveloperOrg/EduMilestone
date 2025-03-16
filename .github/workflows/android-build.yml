@@ -58,10 +58,10 @@ jobs:
           docker run --rm \
             -v ${{ github.workspace }}:/mnt/mega-linter \
             -e GITHUB_WORKSPACE=/mnt/mega-linter \
-            -e SPELL_CSPELL_CONFIG_FILE=/mnt/mega-linter/.cspell.json \  # Added custom spell config
+            -e SPELL_CSPELL_CONFIG_FILE=/mnt/mega-linter/.cspell.json \
             -e MEGA_LINTER_REPORT_DIR=/mnt/mega-linter/megalinter-reports \
             megalinter/megalinter:latest --run --ci --log-level DEBUG --linters all
-        continue-on-error: false  # Allow PRs to proceed even if there are errors
+        continue-on-error: false  # Stop execution if errors occur
 
       # ✅ Step 5: List Linted Files
       - name: List Linted Files
