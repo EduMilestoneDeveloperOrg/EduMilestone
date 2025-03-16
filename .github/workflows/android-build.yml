@@ -70,41 +70,26 @@ jobs:
             megalinter/megalinter:latest --run --ci --log-level DEBUG || true
         continue-on-error: false
 
-      # ✅ Step 5: List Linted Files
-      - name: List Linted Files
+      # ✅ Step 5: Verify MegaLinter Reports Before Uploading
+      - name: Check MegaLinter Reports
         run: |
-          echo "🔍 Checking if MegaLinter report exists..."
-          REPORT_FILE="${{ github.workspace }}/megalinter-reports/linters_logs/linter-report.txt"
-          
-          if [[ -f "$REPORT_FILE" ]]; then
-            echo "🔍 Listing all linted files..."
-            awk '/linted:/{print $0}' "$REPORT_FILE" || echo "⚠️ No linted files found!"
+          REPORT_PATH="${{ github.workspace }}/megalinter-reports"
+          if [ -d "$REPORT_PATH" ]; then
+            echo "✅ MegaLinter reports found, proceeding with upload."
           else
-            echo "⚠️ MegaLinter report not found at $REPORT_FILE!"
+            echo "⚠️ No reports found! Skipping upload."
+            exit 1
           fi
 
-      # ✅ Step 6: List Linter Rules
-      - name: List Linter Rules
-        run: |
-          echo "🔍 Checking if MegaLinter report exists..."
-          REPORT_FILE="${{ github.workspace }}/megalinter-reports/linters_logs/linter-report.txt"
-          
-          if [[ -f "$REPORT_FILE" ]]; then
-            echo "🔍 Listing all linter rules applied..."
-            awk '/rule:/{print $0}' "$REPORT_FILE" || echo "⚠️ No linter rules applied!"
-          else
-            echo "⚠️ MegaLinter report not found at $REPORT_FILE!"
-          fi
-
-      # ✅ Step 7: Upload MegaLinter report as an artifact (Always runs)
+      # ✅ Step 6: Upload MegaLinter Report Artifact
       - name: Upload MegaLinter report artifact
-        if: always()
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: megalinter-report
-          path: ${{ github.workspace }}/megalinter-reports  # Ensure this path is correct
+          path: ${{ github.workspace }}/megalinter-reports
 
-      # ✅ Step 8: Comment on PR with MegaLinter results
+      # ✅ Step 7: Comment on PR with MegaLinter Results
       - name: Comment on PR with MegaLinter results
         uses: peter-evans/create-or-update-comment@v2
         with:
@@ -115,7 +100,7 @@ jobs:
             - 📌 **PR Link**: [${{ github.event.pull_request.html_url }}](${{ github.event.pull_request.html_url }})
             - 📄 **MegaLinter Report**: [Linting Report Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-      # ✅ Step 9: Approve PR if No Errors
+      # ✅ Step 8: Approve PR if No Errors
       - name: Approve PR if No Errors
         if: success()
         uses: peter-evans/create-or-update-comment@v2
