@@ -14,7 +14,13 @@
     "**/*.log",
     "**/vendor",
     "**/.idea",
-    "**/.vscode"
+    "**/.vscode",
+    "**/app/androidTest/**",
+    "**/app/test/**",
+    "**/modules01/androidTest/**",
+    "**/modules01/test/**",
+    "**/src/androidTest/**",
+    "**/src/test/**"
   ],
   "words": [
     "Intelli",
