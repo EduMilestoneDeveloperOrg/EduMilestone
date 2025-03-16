@@ -1,14 +1,2 @@
 ---
 ENABLE_LINTERS: "all"  # ✅ Keep all linters enabled
-
-# ✅ Include only the specified files
-INCLUDE:
-  - "app/build.gradle.kts"
-  - "app/proguard-rules.pro"
-  - "app/src/main/"
-  - "settings.gradle.kts"
-  - "gradle.properties"
-  - "build.gradle.kts"
-  - "milestone/modules01/build.gradle.kts"
-  - "milestone/build.gradle.kts"
-  - "milestone/modules01/src/main/"
