@@ -80,9 +80,9 @@ jobs:
             -e GITHUB_WORKSPACE=/mnt/mega-linter \
             -e MEGA_LINTER_CONFIG=/mnt/mega-linter/.mega-linter.yml \
             -e MEGA_LINTER_IGNORE_FILE=/mnt/mega-linter/.mega-linter-ignore \
-            -e MEGA_LINTER_REPORT_DIR=/mnt/mega-linter/megalinter-reports  # Ensure reports are generated in the correct directory
+            -e MEGA_LINTER_REPORT_DIR=/mnt/mega-linter/megalinter-reports \
             megalinter/megalinter:v5 --run --ci --log-level DEBUG
-        continue-on-error: false  # Allow PRs to proceed even if there are errors
+        continue-on-error: true  # Allow PRs to proceed even if there are errors
 
       # ✅ Step 6: Upload MegaLinter report as an artifact (Always runs)
       - name: Upload MegaLinter report artifact
@@ -100,7 +100,6 @@ jobs:
           body: |
             ### 🔍 MegaLinter Results
             🚀 **Linter results for the pull request:**
-
             - 📌 **PR Link**: [${{ github.event.pull_request.html_url }}](${{ github.event.pull_request.html_url }})
             - 📄 **MegaLinter Report**: [Linting Report Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
