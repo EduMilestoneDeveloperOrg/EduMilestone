@@ -48,19 +48,22 @@ jobs:
           echo "🔍 Checking inside root directory..."
           ls -al $GITHUB_WORKSPACE
 
-      # ✅ Step 4: Run MegaLinter on PR changes (Using .mega-linter.yml & .mega-linter-ignore)
+      # ✅ Step 4: Run MegaLinter with Detailed Logging
       - name: Run MegaLinter on PR changes
         id: mega_linter
         run: |
           echo "🚀 Pulling MegaLinter (latest version)..."
           docker pull megalinter/megalinter:latest
-          echo "🔍 Running MegaLinter with exclusions and strict rules..."
+          echo "🔍 Running MegaLinter with detailed logging..."
           docker run --rm \
             -v ${{ github.workspace }}:/mnt/mega-linter \
             -e GITHUB_WORKSPACE=/mnt/mega-linter \
             -e MEGA_LINTER_CONFIG=/mnt/mega-linter/.mega-linter.yml \
             -e MEGA_LINTER_REPORT_DIR=/mnt/mega-linter/megalinter-reports \
-            megalinter/megalinter:latest --run --ci --log-level DEBUG
+            -e LOG_LEVEL=TRACE \  # ✅ Enable the most detailed logs
+            -e PRINT_LINTERS_TABLE=true \  # ✅ Ensure linter results are displayed
+            -e PRINT_ALL_FILES=true \  # ✅ Show all files checked, even if no errors
+            megalinter/megalinter:latest --run --ci --log-level TRACE
         continue-on-error: false
 
       # ✅ Step 5: List Linted Files
