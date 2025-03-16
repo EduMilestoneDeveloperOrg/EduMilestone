@@ -1,6 +1,0 @@
-# 🚀 Enable all linters
-
-linters:
-  # Enable all linters
-  all:
-    enabled: true
