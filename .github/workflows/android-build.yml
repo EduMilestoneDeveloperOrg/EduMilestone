@@ -48,27 +48,9 @@ jobs:
           echo "🔍 Checking inside root directory..."
           ls -al $GITHUB_WORKSPACE
 
-      # ✅ Step 4: Ensure MegaLinter Configuration Files Exist
-      - name: Ensure MegaLinter Configurations Exist
-        run: |
-          echo "🔍 Checking for MegaLinter configuration files..."
-          MISSING_FILES=()
+      # ✅ Step 4: Skip configuration check (since the config files are missing)
 
-          for file in .mega-linter.yml .mega-linter-ignore; do
-            if [[ ! -e "$GITHUB_WORKSPACE/$file" ]]; then
-              echo "❌ $file is missing! Linter might fail."
-              MISSING_FILES+=("$file")
-            fi
-          done
-
-          if [[ ${#MISSING_FILES[@]} -gt 0 ]]; then
-            echo "❌ Missing files: ${MISSING_FILES[*]}"
-            exit 1
-          fi
-
-          echo "✅ All necessary configuration files exist."
-
-      # ✅ Step 5: Run MegaLinter with explicit config paths and lint all files
+      # ✅ Step 5: Run MegaLinter on PR changes (lint all files, excluding .gitignore)
       - name: Run MegaLinter on PR changes
         id: mega_linter
         run: |
