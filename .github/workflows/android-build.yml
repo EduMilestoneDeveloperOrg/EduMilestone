@@ -6,7 +6,7 @@ on:
     branches:
       - master
     paths:
-      - '**'
+      - '**'  # Lint all files in the repository
   push:
     branches:
       - master
@@ -68,7 +68,7 @@ jobs:
 
           echo "✅ All necessary configuration files exist."
 
-      # ✅ Step 5: Run MegaLinter with explicit config paths
+      # ✅ Step 5: Run MegaLinter with explicit config paths and lint all files
       - name: Run MegaLinter on PR changes
         id: mega_linter
         run: |
@@ -81,7 +81,7 @@ jobs:
             -e MEGA_LINTER_CONFIG=/mnt/mega-linter/.mega-linter.yml \
             -e MEGA_LINTER_IGNORE_FILE=/mnt/mega-linter/.mega-linter-ignore \
             -e MEGA_LINTER_REPORT_DIR=/mnt/mega-linter/megalinter-reports \
-            megalinter/megalinter:v5 --run --ci --log-level DEBUG
+            megalinter/megalinter:v6 --run --ci --log-level DEBUG --linters all --config .mega-linter.yml
         continue-on-error: true  # Allow PRs to proceed even if there are errors
 
       # ✅ Step 6: List Linted Files
