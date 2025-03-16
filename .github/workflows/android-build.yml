@@ -56,16 +56,16 @@ jobs:
           docker pull megalinter/megalinter:latest
           echo "🔍 Running MegaLinter with detailed logging..."
           docker run --rm \
-            -v ${{ github.workspace }}:/mnt/mega-linter \
-            -e GITHUB_WORKSPACE=/mnt/mega-linter \
-            -e MEGA_LINTER_CONFIG=/mnt/mega-linter/.mega-linter.yml \
-            -e MEGA_LINTER_IGNORE_FILE=/mnt/mega-linter/.mega-linter-ignore \
-            -e SPELL_CSPELL_CONFIG_FILE=/mnt/mega-linter/.cspell.json \
-            -e MEGA_LINTER_REPORT_DIR=/mnt/mega-linter/megalinter-reports \
-            -e LOG_LEVEL=TRACE \
-            -e PRINT_LINTERS_TABLE=true \
-            -e PRINT_ALL_FILES=true \
-            -e PRINT_SUMMARY=true \  # ✅ Ensures summary is always printed
+            -v "${{ github.workspace }}:/mnt/mega-linter" \
+            -e GITHUB_WORKSPACE="/mnt/mega-linter" \
+            -e MEGA_LINTER_CONFIG="/mnt/mega-linter/.mega-linter.yml" \
+            -e MEGA_LINTER_IGNORE_FILE="/mnt/mega-linter/.mega-linter-ignore" \
+            -e SPELL_CSPELL_CONFIG_FILE="/mnt/mega-linter/.cspell.json" \
+            -e MEGA_LINTER_REPORT_DIR="/mnt/mega-linter/megalinter-reports" \
+            -e LOG_LEVEL="TRACE" \
+            -e PRINT_LINTERS_TABLE="true" \
+            -e PRINT_ALL_FILES="true" \
+            -e PRINT_SUMMARY="true" \
             megalinter/megalinter:latest --run --ci --log-level TRACE
         continue-on-error: false
 
