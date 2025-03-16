@@ -1,0 +1,48 @@
+# MegaLinter Configuration File
+---
+EXTENDS: advanced_all  # Enables all linters with strict rules
+
+# ✅ Exclude test directories to prevent unnecessary linting
+EXCLUDED_DIRECTORIES:
+  - app/androidTest
+  - app/test
+  - modules01/androidTest
+  - modules01/test
+  - milestone/modules01/androidTest
+  - milestone/modules01/test
+  - src/androidTest
+  - src/test
+
+# ✅ Use a custom spell-check dictionary
+SPELL_CSPELL_CONFIG_FILE: ".cspell.json"
+
+# ✅ Exclude unnecessary files and auto-generated content
+EXCLUDED_FILES:
+  - "**/*.lock"
+  - "**/*.log"
+  - "**/*.min.js"
+  - "**/node_modules/**"
+  - "**/vendor/**"
+  - "**/.gradle/**"
+
+# ✅ Set logging level to debug for troubleshooting
+LOG_LEVEL: DEBUG
+
+# ✅ Enable all linters (Advanced Mode) – you can manually disable some if needed
+ENABLED_LINTERS:
+  - ALL
+
+# ✅ Fail the pipeline if errors are found
+DISABLE_ERRORS: false
+
+# ✅ Maximum duplicate code percentage allowed (default: 20)
+JSDUPLICATE_MAX_PERCENTAGE: 15
+
+# ✅ Set max line length for linters like Prettier, MarkdownLint, etc.
+MAX_LINE_LENGTH: 120
+
+# ✅ Override default linter rules if needed (Example for YAML)
+LINTER_RULE_OVERRIDES:
+  YAML_YAMLLINT:
+    rules:
+      line-length: disable
