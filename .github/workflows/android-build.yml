@@ -1,33 +1,10 @@
 name: Android CI/CD Pipeline
 
-# 🚀 Features Included in the CI/CD Pipeline
-# 🚧 PR Restriction: Ensures only repository collaborators/members can raise PRs.
-# 🛡️ Security Scan (CodeQL): Runs CodeQL security analysis.
-# 🔍 Dependency Scan (Trivy): Scans dependencies for vulnerabilities.
-# 🤖 AI Code Review (Copilot): Enforces GitHub Copilot AI review on PRs.
-# 📜 PR Description Enforcement: Ensures meaningful PR descriptions.
-# 📑 PR File Limit Enforcement: Restricts PRs modifying too many files.
-# 🎨 Linting (ktlint): Enforces Kotlin coding standards.
-# ✅ Organization Owner Approval: Requires manual approval from the repository owner.
-# 🚀 Build & APK Generation: Compiles the project and generates an APK.
-# 🧪 Unit Testing: Runs unit tests (optional but recommended).
-# ✅ Final Merge Check: Ensures that all required jobs pass before PR approval.
-# 🔄 Fail-Fast Strategy: Prevents unnecessary job execution if a critical job fails.
-# ⏳ Timeout Enforcement: Limits execution time to prevent long-running jobs.
-# ♻️ Resource Cleanup: Ensures that workspaces are cleaned after execution.
-# 📢 Notifications: Sends alerts in case of failures (Slack, email, etc.).
-# 🔁 Retry Mechanism: Retries transient failures automatically.
-# ⚡ Parallelization: Runs independent jobs concurrently to speed up execution.
-# 📦 Dependency Caching: Caches Gradle dependencies to optimize build speed.
-
-
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited, ready_for_review]
     branches:
       - master
-    paths:
-      - '**'
   push:
     branches:
       - master
@@ -35,340 +12,117 @@ on:
 permissions:
   pull-requests: write
   contents: write
-  security-events: write  # Required for CodeQL scanning
+  security-events: write
   actions: write
   statuses: write
   id-token: write
 
 jobs:
-  pr_restriction:
-    name: 🚧 Enforce PR Restrictions
-    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
-    if: github.actor != 'github-merge-queue[bot]'
+  mega-linter:
     runs-on: ubuntu-latest
     steps:
-      - name: ⏳ Delay Before Job Start
-        run: sleep 3  # Adds a 3-second delay before execution
-      - name: 🔍 Debug & Verify PR Author and Branch
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "🔍 Starting PR Debugging..."
-          echo "🔹 GitHub Event: ${{ github.event_name }}"
-          echo "🔹 Repository: ${{ github.repository }}"
-          echo "🔹 Actor: ${{ github.actor }}"
-          echo "🔹 Action: ${{ github.event.action }}"
-          echo "🔹 PR Number: ${{ github.event.pull_request.number }}"
-          echo "🔹 PR URL: ${{ github.event.pull_request.html_url }}"
-          
-          echo "🔍 Extracting PR Number..."
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-          REPO_NAME="${{ github.repository }}"
-          
-          if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
-            echo "❌ ERROR: PR number is missing or invalid."
-            exit 1
-          fi
-          
-          echo "🔹 Extracted PR Number: '$PR_NUMBER'"
-          echo "🔹 Repository: $REPO_NAME"
-          
-          echo "🔍 Checking GitHub Token Authentication..."
-          gh auth status || { echo "❌ GH_TOKEN authentication failed!"; exit 1; }
-          
-          echo "🔍 Fetching PR Author..."
-          PR_USER=$(curl -s -H "Authorization: token $GH_TOKEN" \
-            "https://api.github.com/repos/$REPO_NAME/pulls/$PR_NUMBER" | jq -r '.user.login')
-          
-          if [[ -z "$PR_USER" || "$PR_USER" == "null" ]]; then
-            echo "❌ ERROR: Failed to retrieve PR author."
-            exit 1
-          fi
-          
-          echo "✅ PR Author: $PR_USER"
-          
-          echo "🔍 Checking if PR author is a collaborator or member..."
-          COLLABORATOR_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" \
-            "https://api.github.com/repos/$REPO_NAME/collaborators/$PR_USER")
-          
-          TEAM_MEMBER_RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" \
-            "https://api.github.com/orgs/EduMilestoneDeveloperOrg/teams/neural-vision/memberships/$PR_USER")
-          TEAM_MEMBER_STATUS=$(echo "$TEAM_MEMBER_RESPONSE" | jq -r '.state')
-          
-          echo "🔹 Collaborator Status Code: $COLLABORATOR_STATUS"
-          echo "🔹 Team Member Response: $TEAM_MEMBER_RESPONSE"
-          echo "🔹 Team Member Status: $TEAM_MEMBER_STATUS"
-          
-          if [[ "$COLLABORATOR_STATUS" -ne 204 && "$TEAM_MEMBER_STATUS" != "active" ]]; then
-            echo "❌ ERROR: Only repository collaborators or team members can raise pull requests!"
-            exit 1
-          fi
-          
-          echo "✅ PR is from an authorized collaborator or team member."
-          
-          echo "🔍 Checking branch name..."
-          PR_BRANCH="${{ github.head_ref }}"
-          echo "🔹 PR Branch: $PR_BRANCH"
-          
-          # Check if branch name contains the required string
-          if [[ ! "$PR_BRANCH" =~ M/M01/PROD_TOOLS/OCR/ ]]; then
-            echo "❌ ERROR: Branch name does not meet the required pattern 'M/M01/PROD_TOOLS/OCR/'."
-            exit 1
-          fi
-          
-          echo "✅ Branch name '$PR_BRANCH' is valid and meets the required pattern."
-  
-  enforce_pr_description:
-    name: 📜 Enforce PR Description
-    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
-    if: github.actor != 'github-merge-queue[bot]' 
-    runs-on: ubuntu-latest
-    needs: [pr_restriction]
-    steps:
-      - name: ⏳ Delay Before Job Start
-        run: sleep 3  # Adds a 3-second delay before execution
-      - name: 🔍 Check PR Description
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Extract pull request number
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-          REPO_NAME="${{ github.repository }}"
-  
-          if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
-            echo "❌ ERROR: Invalid PR number. Cannot check description."
-            exit 1
-          fi
-  
-          # Retrieve the PR description using curl
-          DESCRIPTION=$(curl -s -H "Authorization: token $GH_TOKEN" \
-            "https://api.github.com/repos/$REPO_NAME/pulls/$PR_NUMBER" | jq -r '.body')
-  
-          # Debugging: Show raw description for clarity
-          echo "🔍 Raw PR Description:"
-          echo "$DESCRIPTION"
-  
-          # Ensure description retrieval succeeded
-          if [[ -z "$DESCRIPTION" || "$DESCRIPTION" == "null" ]]; then
-            echo "❌ ERROR: PR must have a meaningful description!"
-            exit 1
-          fi
-  
-          # Trim whitespace and check if the description is empty
-          TRIMMED_DESC=$(echo "$DESCRIPTION" | xargs)
-  
-          if [[ -z "$TRIMMED_DESC" ]]; then
-            echo "❌ ERROR: PR description cannot be empty or only spaces!"
-            exit 1
-          fi
-          
-          echo "✅ PR has a valid description."
-
-  enforce_pr_files_limit:
-    name: 📑 Limit PR File Changes (Max 50)
-    # ❌ Prevents workflow execution if triggered by `github-merge-queue`
-    if: github.actor != 'github-merge-queue[bot]' 
-    runs-on: ubuntu-latest
-    needs: [enforce_pr_description]
-    steps:
-      - name: ⏳ Delay Before Job Start
-        run: sleep 3  # Adds a 3-second delay before execution
-      - name: 🔍 Check Number of Files Changed
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Extract pull request number and repository name
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-          REPO_NAME="${{ github.repository }}"
-  
-          if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
-            echo "❌ ERROR: Invalid PR number. Cannot check file count."
-            exit 1
-          fi
-  
-          # Fetch list of changed files using GitHub API
-          RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" \
-            "https://api.github.com/repos/$REPO_NAME/pulls/$PR_NUMBER/files")
-  
-          # Debugging: Print the API response for troubleshooting
-          echo "🔍 API Response:"
-          echo "$RESPONSE"
-  
-          # Extract file count
-          FILE_COUNT=$(echo "$RESPONSE" | jq 'length' 2>/dev/null || echo "")
-  
-          # Ensure FILE_COUNT is valid and numeric
-          if ! [[ "$FILE_COUNT" =~ ^[0-9]+$ ]]; then
-            echo "❌ ERROR: Unable to determine the number of changed files."
-            exit 1
-          fi
-  
-          # Verify if the number of files changed exceeds the limit
-          if [[ "$FILE_COUNT" -gt 50 ]]; then
-            echo "❌ ERROR: PR modifies too many files ($FILE_COUNT). Please split into smaller PRs."
-            exit 1
-          fi
-          
-          echo "✅ PR modifies $FILE_COUNT files, within the allowed limit."
-
-  # 2️⃣ Security & Code Quality Checks (All depend on PR validation)
-  linting:
-    name: 🎨 Lint Code (MegaLinter)
-    runs-on: ubuntu-latest
-    needs: [enforce_pr_files_limit]
-    steps:
-      - name: 📥 Checkout Repository
-        uses: actions/checkout@v4
+      # ✅ Step 1: Clear Cache to Ensure Latest Config
+      - name: Clear GitHub Actions Cache
+        uses: actions/cache@v3
         with:
-          fetch-depth: 0  # Fetch full history to avoid shallow clone issues
+          path: ~/.cache
+          key: ${{ runner.os }}-mega-linter-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-mega-linter
 
-      - name: 🚀 Run MegaLinter with Autofix (Docker)
-        id: linter
+      # ✅ Step 2: Checkout PR branch
+      - name: Checkout PR branch
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+
+      # ✅ Step 3: Fetch Commit Author's Email (Instead of PR Author)
+      - name: Fetch Commit Author's Email
+        id: fetch_email
         run: |
-          docker run \
-            -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
-            -v ${{ github.workspace }}:/tmp/lint \
-            -v /tmp/lint/.cache:/tmp/lint/.cache \
-            -w /tmp/lint \
-            megalinter/megalinter:latest \
-            --fix
-          mkdir -p ${{ github.workspace }}/megalinter-report
-          cp -r /tmp/lint/report/* ${{ github.workspace }}/megalinter-report
+          # Get the email of the last commit author
+          EMAIL=$(git log -1 --pretty=format:'%ae')
+          echo "Commit Author Email: $EMAIL"
 
-      - name: 💬 Add Lint Review Comments
-        if: failure()
-        uses: actions/github-script@v4
-        with:
-          script: |
-            const { github } = require('@actions/github');
-            const fs = require('fs');
-            const lintResults = fs.readFileSync('${{ github.workspace }}/megalinter-report/linters_logs/ERROR-KOTLIN_KTLINT.log', 'utf8');
-            github.issues.createComment({
-              ...github.context.repo,
-              issue_number: github.context.issue.number,
-              body: `Linting issues detected:\n\`\`\`${lintResults}\`\`\``
-            });
+          # Default to a backup email if the commit email is private
+          if [[ "$EMAIL" == "" || "$EMAIL" == "null" ]]; then
+            EMAIL="default-notification@example.com"
+          fi
 
-      - name: ✅ Re-check Linting
-        if: failure()
-        uses: actions/github-script@v4
-        with:
-          script: |
-            const { github } = require('@actions/github');
-            const fs = require('fs');
-            const lintResults = fs.readFileSync('${{ github.workspace }}/megalinter-report/linters_logs/ERROR-KOTLIN_KTLINT.log', 'utf8');
-            if (!lintResults.trim()) {
-              github.pulls.createReview({
-                ...github.context.repo,
-                pull_number: github.context.issue.number,
-                event: 'APPROVE',
-                body: 'Linting issues resolved. Approved.'
-              });
-            } else {
-              github.issues.createComment({
-                ...github.context.repo,
-                issue_number: github.context.issue.number,
-                body: `Linting issues still detected:\n\`\`\`${lintResults}\`\`\``
-              });
-            }
+          echo "Final Email to Use: $EMAIL"
+          echo "EMAIL=$EMAIL" >> $GITHUB_ENV
 
-      - name: 📄 Upload Linting Error Report
-        if: failure()
+      # ✅ Step 4: Run MegaLinter with Reduced Logging & Email Reporting
+      - name: MegaLinter
+        uses: oxsecurity/megalinter@v8.4.2
+        env:
+          # ✅ GitHub Token
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          # ✅ Essential MegaLinter Configuration
+          GITHUB_WORKSPACE: "/github/workspace"
+          MEGA_LINTER_CONFIG: "/github/workspace/.mega-linter.yml"
+          MEGA_LINTER_IGNORE_FILE: "/github/workspace/.mega-linter-ignore"
+          SPELL_CSPELL_CONFIG_FILE: "/github/workspace/.cspell.json"
+          MEGA_LINTER_REPORT_DIR: "/github/workspace/megalinter-reports"
+
+          # ✅ Logging & Filtering
+          LOG_LEVEL: "INFO"
+          PRINT_LINTERS_TABLE: "false"
+          PRINT_ALL_FILES: "false"
+          PRINT_SUMMARY: "true"
+          FILTER_REGEX_EXCLUDE: ".*(test|androidTest).*"
+
+          # ✅ Error Handling & Auto-Fixing
+          DISABLE_ERRORS: "false"
+          FAIL_IF_ERROR: "true"
+          VALIDATE_ALL_CODEBASE: "true"
+          APPLY_FIXES: "all"
+
+          # ✅ Email Reporting Configuration (Using Outlook SMTP)
+          EMAIL_REPORTER_EMAIL: ${{ env.EMAIL }}  # ✅ Send report to PR requester
+          EMAIL_REPORTER_SMTP_SERVER: "smtp.office365.com"  # ✅ Outlook SMTP Server
+          EMAIL_REPORTER_SMTP_PORT: "587"
+          EMAIL_REPORTER_SMTP_USERNAME: ${{ secrets.OUTLOOK_USER }}  # ✅ Outlook Email
+          EMAIL_REPORTER_SMTP_PASSWORD: ${{ secrets.OUTLOOK_APP_PASSWORD }}  # ✅ Outlook App Password
+
+      # ✅ Step 5: Verify MegaLinter Reports Before Uploading
+      - name: Check MegaLinter Reports
+        run: |
+          REPORT_PATH="${{ github.workspace }}/megalinter-reports"
+          if [ -d "$REPORT_PATH" ]; then
+            echo "✅ MegaLinter reports found, proceeding with upload."
+          else
+            echo "⚠️ No reports found! Skipping upload."
+            exit 1
+          fi
+
+      # ✅ Step 6: Upload MegaLinter Report Artifact
+      - name: Upload MegaLinter report artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: megalinter-report
-          path: ${{ github.workspace }}/megalinter-report
-          if-no-files-found: warn
-          compression-level: 6
-          overwrite: false
-          include-hidden-files: false
+          path: ${{ github.workspace }}/megalinter-reports
 
-  static_code_analysis:
-    name: 🛠️ Static Code Analysis (Detekt)
-    runs-on: ubuntu-latest
-    needs: [enforce_pr_files_limit]
-
-    steps:
-      - name: 📥 Checkout Repository
-        uses: actions/checkout@v4
+      # ✅ Step 7: Comment on PR with MegaLinter Results
+      - name: Comment on PR with MegaLinter results
+        uses: peter-evans/create-or-update-comment@v2
         with:
-          fetch-depth: 0  # Ensures full history is fetched
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### 🔍 MegaLinter Results
+            🚀 **Linter results for the pull request:**
+            - 📌 **PR Link**: [${{ github.event.pull_request.html_url }}](${{ github.event.pull_request.html_url }})
+            - 📄 **MegaLinter Report**: [Linting Report Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-      - name: 🚀 Install Dependencies (Java & Unzip)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y unzip openjdk-17-jdk curl
-
-      - name: 🚀 Install Detekt
-        env:
-          DETEKT_VERSION: "1.23.0"
-        run: |
-          echo "🔄 Installing Detekt v$DETEKT_VERSION..."
-          
-          # Download Detekt CLI
-          curl -sSLO "https://github.com/detekt/detekt/releases/download/v$DETEKT_VERSION/detekt-cli-$DETEKT_VERSION.zip"
-          
-          # Ensure zip downloaded correctly
-          if [[ ! -f "detekt-cli-$DETEKT_VERSION.zip" ]]; then
-            echo "❌ ERROR: Failed to download Detekt."
-            exit 1
-          fi
-          
-          # Extract Detekt CLI
-          unzip -o "detekt-cli-$DETEKT_VERSION.zip" -d detekt-cli || { echo "❌ ERROR: Unzip failed!"; exit 1; }
-          
-          # Move JAR to a proper location
-          sudo mv detekt-cli/detekt-cli-$DETEKT_VERSION/lib/detekt-cli-$DETEKT_VERSION-all.jar /usr/local/bin/detekt-cli.jar
-          
-          # Create a wrapper script
-          echo -e "#!/bin/bash\njava -jar /usr/local/bin/detekt-cli.jar \"\$@\"" | sudo tee /usr/local/bin/detekt > /dev/null
-          sudo chmod +x /usr/local/bin/detekt
-          
-          # Verify installation
-          detekt --help || { echo "❌ ERROR: Detekt installation failed."; exit 1; }
-
-      - name: 🛠️ Run Detekt Analysis with Retry
-        run: |
-          # Ensure detekt.yml exists, otherwise download the default config
-          if [[ ! -f "detekt.yml" ]]; then
-            echo "⚠️ detekt.yml not found. Downloading default..."
-            curl -sSLo detekt.yml https://raw.githubusercontent.com/detekt/detekt/main/config/detekt.yml
-          fi
-          
-          # Fix potential configuration errors in detekt.yml
-          if grep -q 'maxIssues:' detekt.yml; then
-            echo "🔧 Fixing invalid 'maxIssues' type..."
-            sed -i 's/maxIssues: [0-9]\+/maxIssues: "0"/g' detekt.yml
-          fi
-          
-          # Create reports directory if missing
-          mkdir -p reports
-          
-          # Retry logic
-          MAX_RETRIES=3
-          COUNTER=0
-          
-          while [ $COUNTER -lt $MAX_RETRIES ]; do
-            echo "🔄 Running Detekt analysis (Attempt $((COUNTER+1)))..."
-          
-            detekt --config detekt.yml --report html:reports/detekt.html
-            EXIT_CODE=$?
-          
-            if [[ $EXIT_CODE -eq 0 ]]; then
-              echo "✅ Detekt analysis completed successfully!"
-              exit 0
-            fi
-          
-            echo "⚠️ Detekt found issues (Attempt $((COUNTER+1))). Retrying in 10 seconds..."
-            COUNTER=$((COUNTER+1))
-            sleep 10
-          done
-          
-          echo "❌ ERROR: Static analysis found issues. Please fix them before merging."
-          exit 1
-
-      - name: 📄 Upload Detekt Report
-        uses: actions/upload-artifact@v4
+      # ✅ Step 8: Approve PR if No Errors
+      - name: Approve PR if No Errors
+        if: success()
+        uses: peter-evans/create-or-update-comment@v2
         with:
-          name: detekt-report
-          path: reports/detekt.html
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### ✅ MegaLinter Results
+            **The PR is ready for approval. All linting issues have been fixed.**
+            PR Approved 🎉

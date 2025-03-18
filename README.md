@@ -1,5 +1,5 @@
 # EduMilestone
-EduMilestone is an educational app.
+EduMilestone is an educational app build by EduMilestone Company.
 The first Independent Heavy Milestone Modules Services, contain major services the Tools Section Product, includes features (Independent micro services) like OCR, PDF Viewer, Word Processing, 
 PDF Editing, PPT Tools, and many more.
 We’re developing OCR (Version 01 Release) first, followed by more features.

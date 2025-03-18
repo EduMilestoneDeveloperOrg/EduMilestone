@@ -4,6 +4,14 @@ on:
   merge_group:
     branches:
       - master  # ✅ Runs only when PR enters the merge queue
+
+permissions:
+  pull-requests: write
+  contents: write
+  security-events: write  # Required for CodeQL scanning
+  actions: write
+  statuses: write
+
 jobs:
   auto_merge:
     # ❌ Prevents workflow execution if triggered by `github-merge-queue`
