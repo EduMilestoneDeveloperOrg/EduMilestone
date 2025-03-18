@@ -1,0 +1,78 @@
+# ✅ Detekt Configuration for Kotlin Linting
+# Reference: https://detekt.dev/docs/introduction/configurations
+
+build:
+  maxIssues: 0  # ✅ Fail CI if any issues are found
+  excludeCorrectable: false  # ✅ Allow auto-fixable issues
+
+config:
+  validation: true  # ✅ Ensure config correctness
+
+processors:
+  active: true  # ✅ Enable code processors
+
+console-reports:
+  active: true  # ✅ Print reports in the console
+
+output-reports:
+  active: true  # ✅ Enable file-based reporting
+  exclude:
+    - "config/**"  # ✅ Ignore configuration files
+    - "reports/**"  # ✅ Ignore reports directory
+
+# ✅ Ignore unnecessary directories
+excludes:
+  - "**/config/**"
+  - "**/reports/**"
+  - "**/app/src/androidTest/**"
+  - "**/app/src/test/**"
+  - "**/milestone/modules01/src/androidTest/**"
+  - "**/milestone/modules01/src/test/**"
+  - "**/.github/workflows/**"
+  - "**/.gradle/**"
+  - "**/gradle/**"
+  - "**/gradle/wrapper/**"
+  - "**/gradlew"
+  - "**/gradlew.bat"
+  - "**/build/**"
+  - "**/.idea/**"
+  - "**/.vscode/**"
+  - "**/docs/**"
+  - "**/README.md"
+
+style:
+  MagicNumber:
+    active: false  # ❌ Disable to avoid false positives in UI themes
+  WildcardImport:
+    active: false  # ❌ Disable to allow wildcard imports in test files
+  MaxLineLength:
+    active: true
+    maxLineLength: 120  # ✅ Enforce a reasonable line length
+
+naming:
+  FunctionNaming:
+    active: true
+    functionPattern: '^[a-z][a-zA-Z0-9]*$'  # ✅ Function names must follow camelCase
+  MatchingDeclarationName:
+    active: true  # ✅ Ensure filenames match class declarations
+
+complexity:
+  LongParameterList:
+    active: true
+    threshold: 5  # ✅ Warn if a function has more than 5 parameters
+  LargeClass:
+    active: true
+    threshold: 500  # ✅ Warn if a class exceeds 500 lines
+
+performance:
+  SpreadOperator:
+    active: true  # ✅ Detect inefficient spread operator usage
+
+exceptions:
+  TooGenericExceptionCaught:
+    active: true
+    excludes: ["**/test/**", "**/androidTest/**"]  # ✅ Allow generic exceptions in test files
+
+coroutines:
+  GlobalScopeUsage:
+    active: true  # ✅ Detect incorrect GlobalScope usage in coroutines

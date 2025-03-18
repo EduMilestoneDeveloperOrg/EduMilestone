@@ -1,0 +1,28 @@
+{
+  "threshold": 15,             // ✅ Allow up to 15% code duplication
+  "minLines": 5,               // ✅ Minimum 5 lines to consider as duplicate
+  "minTokens": 70,             // ✅ Minimum 70 tokens to consider as duplicate
+  "ignore": [                  // ✅ Exclude certain directories & files
+    "**/config/**",             // ✅ Exclude config files
+    "**/reports/**",            // ✅ Exclude reports directory
+    "**/app/src/androidTest/**",
+    "**/app/src/test/**",
+    "**/milestone/modules01/src/androidTest/**",
+    "**/milestone/modules01/src/test/**",
+    "**/.github/workflows/**",
+    "**/.gradle/**",
+    "**/gradle/**",
+    "**/gradle/wrapper/**",
+    "**/gradlew",
+    "**/gradlew.bat",
+    "**/build/**",
+    "**/.idea/**",
+    "**/.vscode/**",
+    "**/docs/**",
+    "**/README.md"
+  ],
+  "reporters": ["console", "html"],  // ✅ Output results in console & HTML
+  "output": "reports/megalinter-reports/copy-paste/",  // ✅ Updated to match new report directory
+  "gitignore": true,              // ✅ Ignore files listed in `.gitignore`
+  "exitCode": 1                    // ✅ Fail CI/CD if threshold is exceeded
+}

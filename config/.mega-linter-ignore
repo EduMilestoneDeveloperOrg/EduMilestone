@@ -1,0 +1,28 @@
+# ✅ Ignore specific test directories
+**/app/src/androidTest/**
+**/app/src/test/**
+**/milestone/modules01/src/androidTest/**
+**/milestone/modules01/src/test/**
+
+# ✅ Ignore GitHub Actions workflows
+**/.github/workflows/**
+
+# ✅ Ignore Gradle-related files and directories
+**/.gradle/**
+**/gradle/**
+**/gradle/wrapper/**
+**/gradlew
+**/gradlew.bat
+
+# ✅ Ignore build and IDE-related directories
+**/build/**
+**/.idea/**
+**/.vscode/**
+
+# ✅ Ignore documentation files
+**/docs/**
+**/README.md**
+
+# ✅ Ignore configuration and reports directories
+**/config/**      # ✅ Ignore all config files
+**/reports/**     # ✅ Ignore generated reports

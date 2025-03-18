@@ -59,12 +59,16 @@ jobs:
           # ✅ GitHub Token
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-          # ✅ Essential MegaLinter Configuration
+          # ✅ Essential MegaLinter Configuration (Updated Paths)
           GITHUB_WORKSPACE: "/github/workspace"
-          MEGA_LINTER_CONFIG: "/github/workspace/.mega-linter.yml"
-          MEGA_LINTER_IGNORE_FILE: "/github/workspace/.mega-linter-ignore"
-          SPELL_CSPELL_CONFIG_FILE: "/github/workspace/.cspell.json"
-          MEGA_LINTER_REPORT_DIR: "/github/workspace/megalinter-reports"
+          MEGA_LINTER_CONFIG: "/github/workspace/config/.mega-linter.yml"
+          MEGA_LINTER_IGNORE_FILE: "/github/workspace/config/.mega-linter-ignore"
+          SPELL_CSPELL_CONFIG_FILE: "/github/workspace/config/.cspell.json"
+          MEGA_LINTER_REPORT_DIR: "/github/workspace/reports/megalinter-reports"  # ✅ Fixed Path
+
+          # ✅ Set Config Paths for Linters that Require Custom Configuration
+          JSCPD_CONFIG_FILE: "/github/workspace/config/.jscpd.json"
+          KOTLIN_DETEKT_CONFIG_FILE: "/github/workspace/config/.detekt.yml"
 
           # ✅ Logging & Filtering
           LOG_LEVEL: "INFO"
