@@ -4,6 +4,7 @@
 ENABLED_LINTERS:
   - ALL
 
+# ✅ Disable unnecessary linters
 DISABLED_LINTERS:
   - ACTION
   - BASH
@@ -24,12 +25,13 @@ MEGA_LINTER_IGNORE_FILE: "config/.mega-linter-ignore"
 # ✅ Ignore files listed in .gitignore
 IGNORE_GITIGNORED_FILES: true
 
-# ✅ If using Kotlin, load detekt configuration
+# ✅ If using Kotlin, load Detekt configuration
 KOTLIN_DETEKT_CONFIG_FILE: "config/.detekt.yml"
 
+# ✅ Exclude unnecessary directories
 EXCLUDED_DIRECTORIES:
-  - "config/"   # ✅ Exclude configuration folder
-  - "reports/"  # ✅ Exclude reports folder
+  - "config/"     # ✅ Exclude configuration files
+  - "reports/"    # ✅ Exclude generated reports
   - "app/src/androidTest/"
   - "app/src/test/"
   - "milestone/modules01/src/androidTest/"
@@ -38,17 +40,19 @@ EXCLUDED_DIRECTORIES:
   - ".gradle/"
   - "gradle/"
   - "gradle/wrapper/"
-  - "gradlew/"  # ✅ Exclude Gradle wrapper script directory
+  - "gradlew/"    # ✅ Exclude Gradle wrapper script directory
   - "build/"
   - ".idea/"
   - ".vscode/"
   - "docs/"
 
+# ✅ Exclude specific files
 EXCLUDED_FILES:
-  - "config/**"   # ✅ Exclude configuration files
-  - "reports/**"  # ✅ Exclude reports directory
-  - "gradlew"  # ✅ Exclude Gradle wrapper script (Linux/Mac)
-  - "gradlew.bat"  # ✅ Exclude Gradle wrapper script (Windows)
+  - "gradlew"          # ✅ Exclude Gradle wrapper script (Linux/Mac)
+  - "gradlew.bat"      # ✅ Exclude Gradle wrapper script (Windows)
+  - "**/README.md"     # ✅ Exclude project README
+  - "**/config/**"     # ✅ Exclude configuration files
+  - "**/reports/**"    # ✅ Exclude reports
   - "**/app/src/androidTest/**"
   - "**/app/src/test/**"
   - "**/milestone/modules01/src/androidTest/**"
@@ -61,14 +65,13 @@ EXCLUDED_FILES:
   - "**/.idea/**"
   - "**/.vscode/**"
   - "**/docs/**"
-  - "**/README.md"
 
 # ✅ Reduce log spam but keep useful information
-LOG_LEVEL: INFO  # Use INFO instead of DEBUG for cleaner logs
+LOG_LEVEL: INFO  # ✅ Use INFO instead of DEBUG for cleaner logs
 
 # ✅ Fail pipeline if genuine errors are found
 DISABLE_ERRORS: false
-FAIL_IF_ERROR: true  # Ensures pipeline fails if errors exist
+FAIL_IF_ERROR: true  # ✅ Ensures pipeline fails if errors exist
 
 # ✅ Run linters in parallel to improve performance
 PARALLEL: true
@@ -92,6 +95,6 @@ FILTER_REGEX_EXCLUDE: ".*(test|androidTest).*"
 REPORT_OUTPUT_FOLDER: "${GITHUB_WORKSPACE}/reports/megalinter-reports"
 
 # ✅ Other useful optimizations
-CLEAR_REPORT_FOLDER: true  # Clean report folder before each run
-PRINT_ALL_FILES: false  # Do not print all files, only count them
-SHOW_SKIPPED_LINTERS: false  # Hide skipped linters to reduce log clutter
+CLEAR_REPORT_FOLDER: true  # ✅ Clean report folder before each run
+PRINT_ALL_FILES: false  # ✅ Do not print all files, only count them
+SHOW_SKIPPED_LINTERS: false  # ✅ Hide skipped linters to reduce log clutter
