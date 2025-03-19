@@ -1,0 +1,94 @@
+# ✅ Optimized MegaLinter Configuration File
+---
+# ✅ Enable only essential linters instead of ALL
+ENABLED_LINTERS:
+  - DEFAULT  # ✅ Enables recommended linters
+  - KOTLIN   # ✅ Explicitly include Kotlin
+  - MARKDOWN # ✅ Explicitly include Markdown checks
+
+# ✅ Disable unnecessary linters
+DISABLED_LINTERS:
+  - ACTION
+  - BASH
+  - SHELL
+
+# ✅ Use a custom spell-check dictionary
+SPELL_CSPELL_CONFIG_FILE: "config/.cspell.json"
+
+# ✅ Load Custom `jscpd` Configuration File
+JSCPD_CONFIG_FILE: "config/.jscpd.json"
+JSCPD_ARGS: "--threshold=10"  # ✅ Reduce duplication threshold
+
+# ✅ Ensure .mega-linter-ignore is used
+MEGA_LINTER_IGNORE_FILE: "config/.mega-linter-ignore"
+
+# ✅ Ignore files listed in .gitignore
+IGNORE_GITIGNORED_FILES: true
+
+# ✅ If using Kotlin, load Detekt configuration
+KOTLIN_DETEKT_CONFIG_FILE: "config/.detekt.yml"
+
+# ✅ Exclude unnecessary directories
+EXCLUDED_DIRECTORIES:
+  - "reports/"   # ✅ Exclude reports folder
+  - "**/app/src/androidTest/**"
+  - "**/app/src/test/**"
+  - "**/milestone/modules01/src/androidTest/**"
+  - "**/milestone/modules01/src/test/**"
+  - "**/.github/workflows/**"
+  - "**/.gradle/**"
+  - "**/gradle/**"
+  - "**/build/**"
+  - "**/.idea/**"
+  - "**/.vscode/**"
+  - "**/docs/**"
+
+# ✅ Exclude specific files
+EXCLUDED_FILES:
+  - "gradlew"        # ✅ Exclude Gradle wrapper script
+  - "gradlew.bat"    # ✅ Windows Gradle wrapper
+  - "**/README.md"   # ✅ Exclude README files
+  - "**/config/**"   # ✅ Exclude configuration files
+  - "**/reports/**"  # ✅ Exclude reports
+  - "**/.github/workflows/**"
+  - "**/.gradle/**"
+  - "**/gradle/**"
+  - "**/build/**"
+  - "**/.idea/**"
+  - "**/.vscode/**"
+
+# ✅ Increase Debug Logging for Troubleshooting
+LOG_LEVEL: DEBUG  # ✅ Show all configurations being applied
+PRINT_ALL_FILES: true  # ✅ Show all processed files
+PRINT_LINTERS_TABLE: true  # ✅ Show enabled linters
+SHOW_SKIPPED_LINTERS: true  # ✅ Show skipped linters
+
+# ✅ Fail pipeline if genuine errors are found
+DISABLE_ERRORS: false
+FAIL_IF_ERROR: true  # ✅ Ensures pipeline fails if errors exist
+
+# ✅ Run linters in parallel to improve performance
+PARALLEL: true
+
+# ✅ Auto-fix issues where possible
+APPLY_FIXES: all
+APPLY_FIXES_EVENT: pull_request
+APPLY_FIXES_MODE: commit  # ✅ Avoid GitHub PR limitations
+
+# ✅ Security: Protect sensitive environment variables
+SECURED_ENV_VARIABLES:
+  - GITHUB_TOKEN
+  - PAT
+  - OX_API_KEY
+  - MY_SECRET_TOKEN
+  - OUTLOOK_USER  # ✅ Added email credentials
+  - OUTLOOK_APP_PASSWORD
+
+# ✅ Exclude test folders from linting (GitHub Actions-specific)
+FILTER_REGEX_EXCLUDE: ".*(test|androidTest).*"
+
+# ✅ Report output directory (updated)
+REPORT_OUTPUT_FOLDER: "${GITHUB_WORKSPACE}/reports/megalinter-reports"
+
+# ✅ Other useful optimizations
+CLEAR_REPORT_FOLDER: true  # ✅ Clean report folder before each run
