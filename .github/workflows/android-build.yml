@@ -19,109 +19,31 @@ permissions:
 
 jobs:
   mega-linter:
+    name: MegaLinter
     runs-on: ubuntu-latest
+
     steps:
-      # ✅ Step 1: Clear Mega-Linter Cache
-      - name: Clear Mega-Linter Cache
-        run: |
-          npx mega-linter --clear-cache || true
+      - name: Checkout Code
+        uses: actions/checkout@v4  # ✅ Updated to latest version
 
-      # ✅ Step 2: Checkout PR branch
-      - name: Checkout PR branch
-        uses: actions/checkout@v3
+      - name: Set up Java
+        uses: actions/setup-java@v3
         with:
-          ref: ${{ github.head_ref }}
+          distribution: 'temurin'
+          java-version: '17'
 
-      # ✅ Step 3: Fetch Commit Author's Email
-      - name: Fetch Commit Author's Email
-        id: fetch_email
-        run: |
-          EMAIL="$(git log -1 --pretty=format:'%ae')"
-          echo "Commit Author Email: $EMAIL"
-          if [[ -z "$EMAIL" || "$EMAIL" == "null" ]]; then
-            EMAIL="default-notification@example.com"
-          fi
-          echo "Final Email to Use: $EMAIL"
-          echo "EMAIL=$EMAIL" >> $GITHUB_ENV
+      - name: Debug MegaLinter Configuration
+        run: cat ${{ github.workspace }}/config/.mega-linter.yml  # ✅ Debugging config
 
-      # ✅ Step 4: Run MegaLinter with Correct Configurations
-      - name: MegaLinter
+      - name: Run MegaLinter
         uses: oxsecurity/megalinter@v8.4.2
         env:
-          # ✅ GitHub Token
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MEGA_LINTER_CONFIG: "${{ github.workspace }}/config/.mega-linter.yml"
+          ENABLED_LINTERS: "DEFAULT,KOTLIN,MARKDOWN"
+          DISABLED_LINTERS: "ACTION,ACTION_ACTIONLINT,BASH,SHELL"
+          LOG_LEVEL: "DEBUG"  # ✅ Enable detailed logging
 
-          # ✅ Essential MegaLinter Configuration (Using config/ folder)
-          GITHUB_WORKSPACE: "/github/workspace"
-          MEGA_LINTER_CONFIG: "/github/workspace/config/.mega-linter.yml"
-          MEGA_LINTER_IGNORE_FILE: "/github/workspace/config/.mega-linter-ignore"
-          SPELL_CSPELL_CONFIG_FILE: "/github/workspace/config/.cspell.json"
-          MEGA_LINTER_REPORT_DIR: "/github/workspace/reports/megalinter-reports"
-
-          # ✅ Custom Linter Configurations
-          JSCPD_CONFIG_FILE: "/github/workspace/config/.jscpd.json"
-          KOTLIN_DETEKT_CONFIG_FILE: "/github/workspace/config/.detekt.yml"
-
-          # ✅ Explicitly Disable Linters
-          DISABLE_LINTERS: "ACTION,BASH,SHELL"
-
-          # ✅ Logging & Filtering
-          LOG_LEVEL: "INFO"
-          PRINT_LINTERS_TABLE: "false"
-          PRINT_ALL_FILES: "false"
-          PRINT_SUMMARY: "true"
-          FILTER_REGEX_EXCLUDE: ".*(test|androidTest).*"
-
-          # ✅ Error Handling & Auto-Fixing
-          DISABLE_ERRORS: "false"
-          FAIL_IF_ERROR: "true"
-          VALIDATE_ALL_CODEBASE: "true"
-          APPLY_FIXES: "all"
-
-          # ✅ Email Reporting Configuration
-          EMAIL_REPORTER_EMAIL: ${{ env.EMAIL }}
-          EMAIL_REPORTER_SMTP_SERVER: "smtp.office365.com"
-          EMAIL_REPORTER_SMTP_PORT: "587"
-          EMAIL_REPORTER_SMTP_USERNAME: ${{ secrets.OUTLOOK_USER }}
-          EMAIL_REPORTER_SMTP_PASSWORD: ${{ secrets.OUTLOOK_APP_PASSWORD }}
-
-      # ✅ Step 5: Verify MegaLinter Reports in reports/ folder
-      - name: Check MegaLinter Reports
+      - name: Verify Active Linters
         run: |
-          REPORT_PATH="${{ github.workspace }}/reports/megalinter-reports"
-          if [ -d "$REPORT_PATH" ]; then
-            echo "✅ MegaLinter reports found, proceeding with upload."
-          else
-            echo "⚠️ No reports found! Skipping upload."
-            exit 1
-          fi
-
-      # ✅ Step 6: Upload MegaLinter Report Artifact
-      - name: Upload MegaLinter report artifact
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: megalinter-report
-          path: ${{ github.workspace }}/reports/megalinter-reports
-
-      # ✅ Step 7: Comment on PR with MegaLinter Results
-      - name: Comment on PR with MegaLinter results
-        uses: peter-evans/create-or-update-comment@v2
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            ### 🔍 MegaLinter Results
-            🚀 **Linter results for the pull request:**
-            - 📌 **PR Link**: [${{ github.event.pull_request.html_url }}](${{ github.event.pull_request.html_url }})
-            - 📄 **MegaLinter Report**: [Linting Report Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
-
-      # ✅ Step 8: Approve PR if No Errors
-      - name: Approve PR if No Errors
-        if: success()
-        uses: peter-evans/create-or-update-comment@v2
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            ### ✅ MegaLinter Results
-            **The PR is ready for approval. All linting issues have been fixed.**
-            PR Approved 🎉
+          npx mega-linter-runner --print-config | grep "ACTION"
