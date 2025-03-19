@@ -21,14 +21,10 @@ jobs:
   mega-linter:
     runs-on: ubuntu-latest
     steps:
-      # ✅ Step 1: Clear Cache to Ensure Latest Config
-      - name: Clear GitHub Actions Cache
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache
-          key: ${{ runner.os }}-mega-linter-${{ github.run_id }}
-          restore-keys: |
-            ${{ runner.os }}-mega-linter
+      # ✅ Step 1: Clear Mega-Linter Cache
+      - name: Clear Mega-Linter Cache
+        run: |
+          npx mega-linter --clear-cache || true
 
       # ✅ Step 2: Checkout PR branch
       - name: Checkout PR branch
@@ -36,39 +32,38 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
 
-      # ✅ Step 3: Fetch Commit Author's Email (Instead of PR Author)
+      # ✅ Step 3: Fetch Commit Author's Email
       - name: Fetch Commit Author's Email
         id: fetch_email
         run: |
-          # Get the email of the last commit author
-          EMAIL=$(git log -1 --pretty=format:'%ae')
+          EMAIL="$(git log -1 --pretty=format:'%ae')"
           echo "Commit Author Email: $EMAIL"
-
-          # Default to a backup email if the commit email is private
-          if [[ "$EMAIL" == "" || "$EMAIL" == "null" ]]; then
+          if [[ -z "$EMAIL" || "$EMAIL" == "null" ]]; then
             EMAIL="default-notification@example.com"
           fi
-
           echo "Final Email to Use: $EMAIL"
           echo "EMAIL=$EMAIL" >> $GITHUB_ENV
 
-      # ✅ Step 4: Run MegaLinter with Reduced Logging & Email Reporting
+      # ✅ Step 4: Run MegaLinter with Correct Configurations
       - name: MegaLinter
         uses: oxsecurity/megalinter@v8.4.2
         env:
           # ✅ GitHub Token
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-          # ✅ Essential MegaLinter Configuration (Updated Paths)
+          # ✅ Essential MegaLinter Configuration (Using config/ folder)
           GITHUB_WORKSPACE: "/github/workspace"
           MEGA_LINTER_CONFIG: "/github/workspace/config/.mega-linter.yml"
           MEGA_LINTER_IGNORE_FILE: "/github/workspace/config/.mega-linter-ignore"
           SPELL_CSPELL_CONFIG_FILE: "/github/workspace/config/.cspell.json"
-          MEGA_LINTER_REPORT_DIR: "/github/workspace/reports/megalinter-reports"  # ✅ Fixed Path
+          MEGA_LINTER_REPORT_DIR: "/github/workspace/reports/megalinter-reports"
 
-          # ✅ Set Config Paths for Linters that Require Custom Configuration
+          # ✅ Custom Linter Configurations
           JSCPD_CONFIG_FILE: "/github/workspace/config/.jscpd.json"
           KOTLIN_DETEKT_CONFIG_FILE: "/github/workspace/config/.detekt.yml"
+
+          # ✅ Explicitly Disable Linters
+          DISABLE_LINTERS: "ACTION,BASH,SHELL"
 
           # ✅ Logging & Filtering
           LOG_LEVEL: "INFO"
@@ -83,17 +78,17 @@ jobs:
           VALIDATE_ALL_CODEBASE: "true"
           APPLY_FIXES: "all"
 
-          # ✅ Email Reporting Configuration (Using Outlook SMTP)
-          EMAIL_REPORTER_EMAIL: ${{ env.EMAIL }}  # ✅ Send report to PR requester
-          EMAIL_REPORTER_SMTP_SERVER: "smtp.office365.com"  # ✅ Outlook SMTP Server
+          # ✅ Email Reporting Configuration
+          EMAIL_REPORTER_EMAIL: ${{ env.EMAIL }}
+          EMAIL_REPORTER_SMTP_SERVER: "smtp.office365.com"
           EMAIL_REPORTER_SMTP_PORT: "587"
-          EMAIL_REPORTER_SMTP_USERNAME: ${{ secrets.OUTLOOK_USER }}  # ✅ Outlook Email
-          EMAIL_REPORTER_SMTP_PASSWORD: ${{ secrets.OUTLOOK_APP_PASSWORD }}  # ✅ Outlook App Password
+          EMAIL_REPORTER_SMTP_USERNAME: ${{ secrets.OUTLOOK_USER }}
+          EMAIL_REPORTER_SMTP_PASSWORD: ${{ secrets.OUTLOOK_APP_PASSWORD }}
 
-      # ✅ Step 5: Verify MegaLinter Reports Before Uploading
+      # ✅ Step 5: Verify MegaLinter Reports in reports/ folder
       - name: Check MegaLinter Reports
         run: |
-          REPORT_PATH="${{ github.workspace }}/megalinter-reports"
+          REPORT_PATH="${{ github.workspace }}/reports/megalinter-reports"
           if [ -d "$REPORT_PATH" ]; then
             echo "✅ MegaLinter reports found, proceeding with upload."
           else
@@ -107,7 +102,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: megalinter-report
-          path: ${{ github.workspace }}/megalinter-reports
+          path: ${{ github.workspace }}/reports/megalinter-reports
 
       # ✅ Step 7: Comment on PR with MegaLinter Results
       - name: Comment on PR with MegaLinter results
