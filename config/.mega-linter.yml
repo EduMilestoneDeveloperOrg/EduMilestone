@@ -1,8 +1,10 @@
 # ✅ Optimized MegaLinter Configuration File
 ---
-# ✅ Enable all linters
+# ✅ Enable only essential linters instead of ALL
 ENABLED_LINTERS:
-  - ALL
+  - DEFAULT  # ✅ Enables recommended linters
+  - KOTLIN   # ✅ Explicitly include Kotlin
+  - MARKDOWN # ✅ Explicitly include Markdown checks
 
 # ✅ Disable unnecessary linters
 DISABLED_LINTERS:
@@ -15,9 +17,7 @@ SPELL_CSPELL_CONFIG_FILE: "config/.cspell.json"
 
 # ✅ Load Custom `jscpd` Configuration File
 JSCPD_CONFIG_FILE: "config/.jscpd.json"
-
-# ✅ Allow up to 15% code duplication (if not using `.jscpd.json`)
-JSCPD_ARGS: "--threshold 15"
+JSCPD_ARGS: "--threshold 10"  # ✅ Reduce duplication threshold
 
 # ✅ Ensure .mega-linter-ignore is used
 MEGA_LINTER_IGNORE_FILE: "config/.mega-linter-ignore"
@@ -30,8 +30,7 @@ KOTLIN_DETEKT_CONFIG_FILE: "config/.detekt.yml"
 
 # ✅ Exclude unnecessary directories
 EXCLUDED_DIRECTORIES:
-  - "config/"     # ✅ Exclude configuration files
-  - "reports/"    # ✅ Exclude generated reports
+  - "reports/"   # ✅ Exclude reports folder
   - "app/src/androidTest/"
   - "app/src/test/"
   - "milestone/modules01/src/androidTest/"
@@ -39,8 +38,6 @@ EXCLUDED_DIRECTORIES:
   - ".github/workflows/"
   - ".gradle/"
   - "gradle/"
-  - "gradle/wrapper/"
-  - "gradlew/"    # ✅ Exclude Gradle wrapper script directory
   - "build/"
   - ".idea/"
   - ".vscode/"
@@ -48,26 +45,20 @@ EXCLUDED_DIRECTORIES:
 
 # ✅ Exclude specific files
 EXCLUDED_FILES:
-  - "gradlew"          # ✅ Exclude Gradle wrapper script (Linux/Mac)
-  - "gradlew.bat"      # ✅ Exclude Gradle wrapper script (Windows)
-  - "**/README.md"     # ✅ Exclude project README
-  - "**/config/**"     # ✅ Exclude configuration files
-  - "**/reports/**"    # ✅ Exclude reports
-  - "**/app/src/androidTest/**"
-  - "**/app/src/test/**"
-  - "**/milestone/modules01/src/androidTest/**"
-  - "**/milestone/modules01/src/test/**"
+  - "gradlew"        # ✅ Exclude Gradle wrapper script
+  - "gradlew.bat"    # ✅ Windows Gradle wrapper
+  - "**/README.md"   # ✅ Exclude README files
+  - "**/config/**"   # ✅ Exclude configuration files
+  - "**/reports/**"  # ✅ Exclude reports
   - "**/.github/workflows/**"
   - "**/.gradle/**"
   - "**/gradle/**"
-  - "**/gradle/wrapper/**"
   - "**/build/**"
   - "**/.idea/**"
   - "**/.vscode/**"
-  - "**/docs/**"
 
 # ✅ Reduce log spam but keep useful information
-LOG_LEVEL: INFO  # ✅ Use INFO instead of DEBUG for cleaner logs
+LOG_LEVEL: INFO  # ✅ Cleaner logs
 
 # ✅ Fail pipeline if genuine errors are found
 DISABLE_ERRORS: false
@@ -79,7 +70,7 @@ PARALLEL: true
 # ✅ Auto-fix issues where possible
 APPLY_FIXES: all
 APPLY_FIXES_EVENT: pull_request
-APPLY_FIXES_MODE: commit
+APPLY_FIXES_MODE: pull_request_suggestion  # ✅ Suggest changes instead of direct commit
 
 # ✅ Security: Protect sensitive environment variables
 SECURED_ENV_VARIABLES:
@@ -87,6 +78,8 @@ SECURED_ENV_VARIABLES:
   - PAT
   - OX_API_KEY
   - MY_SECRET_TOKEN
+  - OUTLOOK_USER  # ✅ Added email credentials
+  - OUTLOOK_APP_PASSWORD
 
 # ✅ Exclude test folders from linting (GitHub Actions-specific)
 FILTER_REGEX_EXCLUDE: ".*(test|androidTest).*"
