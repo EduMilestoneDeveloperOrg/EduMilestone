@@ -56,6 +56,6 @@ lint/reports/
 *.swo
 
 local.properties
-milestone/build/
+centralcore/build/
 milestone/modules01/build/
 app/build/

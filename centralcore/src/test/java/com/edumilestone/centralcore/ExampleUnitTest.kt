@@ -1,4 +1,4 @@
-package com.edumilestone.modules01
+package com.edumilestone.centralcore
 
 import org.junit.Test
 

@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.edumilestone.modules01"
+    namespace = "com.edumilestone.centralcore"
     compileSdk = 35
 
     defaultConfig {
