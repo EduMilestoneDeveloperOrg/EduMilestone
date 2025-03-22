@@ -21,5 +21,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "EduMilestone"
 include(":app")
-include(":milestone")
+include(":centralcore")
 include(":milestone:modules01")
+project(":milestone:modules01").projectDir = file("milestone/modules01")
