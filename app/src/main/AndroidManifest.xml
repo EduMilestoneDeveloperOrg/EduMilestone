@@ -13,13 +13,11 @@
         android:theme="@style/Theme.EduMilestone"
         tools:targetApi="31">
         <activity
-            android:name=".MainApplication"
+            android:name=".EduMilestoneApp"
             android:exported="true"
-            android:label="@string/app_name"
             android:theme="@style/Theme.EduMilestone">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
