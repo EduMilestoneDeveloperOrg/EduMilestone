@@ -13,9 +13,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import android.util.Log
 
 @Composable
-fun WordScreen() {
+fun WordScreen(navController: NavController) {
+    // Log the initial state
+    Log.i("WordScreen", "WordScreen composable started")
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -24,6 +29,7 @@ fun WordScreen() {
         horizontalAlignment = Alignment.CenterHorizontally, // Center align items horizontally
         verticalArrangement = Arrangement.Center // Center align items vertically
     ) {
+        // Icon for the Word feature
         Icon(
             imageVector = Icons.Filled.Description,
             contentDescription = "Word Icon",
@@ -33,6 +39,7 @@ fun WordScreen() {
                 .padding(bottom = 16.dp)
         )
 
+        // Header text for the Word feature
         Text(
             text = "Word Editor",
             fontWeight = FontWeight.Bold,
@@ -41,6 +48,7 @@ fun WordScreen() {
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
+        // Description text for the Word feature
         Text(
             text = "Upcoming Features Under Tools_Section",
             color = Color(0xFF757575), // Secondary color for the description
@@ -48,6 +56,7 @@ fun WordScreen() {
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
+        // Additional description text
         Text(
             text = "Development in progress",
             color = Color(0xFF757575), // Secondary color for the description
@@ -55,8 +64,14 @@ fun WordScreen() {
             modifier = Modifier.padding(bottom = 32.dp)
         )
 
+        // Button to navigate back to the Home Screen
         Button(
-            onClick = { /* Handle action if needed */ },
+            onClick = {
+                Log.i("WordScreen", "Back to Home button clicked")
+                navController.navigate("home_screen") {
+                    popUpTo("home_screen") { inclusive = true }
+                }
+            },
             shape = RoundedCornerShape(8.dp), // Rounded corners for the button
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6200EE)), // Primary color for the button
             modifier = Modifier

@@ -13,9 +13,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import android.util.Log
 
 @Composable
-fun PDFScreen() {
+fun PDFScreen(navController: NavController) {
+    // Log the initial state
+    Log.i("PDFScreen", "PDFScreen composable started")
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -24,6 +29,7 @@ fun PDFScreen() {
         horizontalAlignment = Alignment.CenterHorizontally, // Center align items horizontally
         verticalArrangement = Arrangement.Center // Center align items vertically
     ) {
+        // Icon for the PDF feature
         Icon(
             imageVector = Icons.Filled.Description,
             contentDescription = "PDF Icon",
@@ -33,6 +39,7 @@ fun PDFScreen() {
                 .padding(bottom = 16.dp)
         )
 
+        // Header text for the PDF feature
         Text(
             text = "PDF Viewer",
             fontWeight = FontWeight.Bold,
@@ -41,6 +48,7 @@ fun PDFScreen() {
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
+        // Description text for the PDF feature
         Text(
             text = "Upcoming Features Under Tools_Section",
             color = Color(0xFF757575), // Secondary color for the description
@@ -48,6 +56,7 @@ fun PDFScreen() {
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
+        // Additional description text
         Text(
             text = "Development in progress",
             color = Color(0xFF757575), // Secondary color for the description
@@ -55,8 +64,14 @@ fun PDFScreen() {
             modifier = Modifier.padding(bottom = 32.dp)
         )
 
+        // Button to navigate back to the Home Screen
         Button(
-            onClick = { /* Handle action if needed */ },
+            onClick = {
+                Log.i("PDFScreen", "Back to Home button clicked")
+                navController.navigate("home_screen") {
+                    popUpTo("home_screen") { inclusive = true }
+                }
+            },
             shape = RoundedCornerShape(8.dp), // Rounded corners for the button
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6200EE)), // Primary color for the button
             modifier = Modifier

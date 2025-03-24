@@ -31,33 +31,35 @@ class AppNavigation {
      */
     fun handleFeatureRequest(navController: NavController, feature: String) {
         // Launching a coroutine to handle the feature request in an asynchronous manner.
+        Log.d("AppNavigation", "handleFeatureRequest called with feature: $feature")
         scope.launch {
             // Getting the module name associated with the requested feature using the FeaturesModuleMapping.
             val moduleName: String? = FeaturesModuleMapping.getModuleForFeature(feature)
-
+            Log.d("AppNavigation", "Module name for feature $feature: $moduleName")
             // If no module is found for the feature, navigate to the Home Screen directly.
             if (moduleName == null) {
+                Log.d("AppNavigation", "No module found for feature $feature, navigating to Home Screen")
                 navigateToHomeScreen(navController)
                 return@launch
             }
 
             // Getting the active module from the ModuleManager.
             val activeModule = ModuleManager.getActiveModule().value
-
+            Log.d("AppNavigation", "Active module: $activeModule")
             // If there's an active module and its name matches the requested module.
             if (activeModule != null && activeModule.moduleName == moduleName) {
                 // Get the current module load status from the active module.
                 val currentStatus: ModuleLoadStatus = ModuleManager.getModuleLoadStatus().value
-
+                Log.d("AppNavigation", "Current module status: $currentStatus")
                 // If the current module is successfully loaded, navigate to the feature UI.
                 if (currentStatus == ModuleLoadStatus.SUCCESS) {
+                    Log.d("AppNavigation", "Module already loaded successfully, navigating to feature UI")
                     navigateToFeatureUI(navController, feature)
                     return@launch
                 }
             }
-
+            Log.d("AppNavigation", "Unloading and reloading module for feature $feature")
             // If the active module doesn't match or the module isn't successfully loaded, reload the module.
-            unloadModuleForFeature(feature)
             loadModuleAndNavigate(navController, feature)
         }
     }
@@ -72,17 +74,21 @@ class AppNavigation {
 
         // Retry loading the module up to 3 times.
         while (retryCount < 3 && !success) {
+            Log.d("AppNavigation", "Attempting to load module for feature $feature (Retry $retryCount)")
             // Requesting the ModuleManager to load the module based on the feature request.
             currentModuleStatus = ModuleManager.loadModuleForFeature(feature)
-            delay(200) // Wait for a short period before checking the status again
+            Log.d("AppNavigation", "Initial module load status: $currentModuleStatus")
+            delay(10) // Wait for a short period before checking the status again
             // Wait until the module is loaded
             while (currentModuleStatus == ModuleLoadStatus.LOADING) {
-                delay(500) // Wait for a short period before checking the status again
+                delay(10) // Wait for a short period before checking the status again
                 currentModuleStatus = ModuleManager.getModuleLoadStatus().value
+                Log.d("AppNavigation", "Module load status: $currentModuleStatus")
             }
 
             // If the module loaded successfully, navigate to the feature UI.
             if (currentModuleStatus == ModuleLoadStatus.SUCCESS) {
+                Log.d("AppNavigation", "Module loaded successfully, navigating to feature UI")
                 navigateToFeatureUI(navController, feature)
                 success = true
             } else {
@@ -105,6 +111,7 @@ class AppNavigation {
      */
     private fun navigateToFeatureUI(navController: NavController, feature: String) {
         // Navigating to the feature screen using the feature name passed as a route parameter.
+        Log.d("AppNavigation", "Navigating to feature UI: $feature")
         navController.navigate("feature_screen/$feature")
     }
 
@@ -116,6 +123,7 @@ class AppNavigation {
     private fun navigateToHomeScreen(navController: NavController) {
         // Navigating to the Home Screen and popping all previous screens from the back stack to prevent back navigation.
         navController.navigate("home_screen") {
+            Log.d("AppNavigation", "Navigating to Home Screen")
             popUpTo("home_screen") { inclusive = true } // Clears the back stack and ensures no back navigation is possible.
         }
     }
@@ -125,12 +133,15 @@ class AppNavigation {
      */
     fun unloadModuleForFeature(feature: String) {
         scope.launch {
+            Log.d("AppNavigation", "Unloading module for feature: $feature")
             currentModuleStatus = ModuleManager.unloadModuleForFeature(feature)
-            delay(200) // Wait for a short period before checking the status again
+            Log.d("AppNavigation", "Initial module unload status: $currentModuleStatus")
+            delay(10) // Wait for a short period before checking the status again
             // Wait until the module is unloaded
             while (currentModuleStatus == ModuleLoadStatus.UNLOADING) {
-                delay(500) // Wait for a short period before checking the status again
+                delay(10) // Wait for a short period before checking the status again
                 currentModuleStatus = ModuleManager.getModuleLoadStatus().value
+                Log.d("AppNavigation", "Module unload status: $currentModuleStatus")
             }
 
             if (currentModuleStatus == ModuleLoadStatus.UNLOADED) {
@@ -145,6 +156,7 @@ class AppNavigation {
      * This ensures there are no active background tasks, prevents memory leaks, and ensures proper cleanup.
      */
     fun cleanup() {
+        Log.d("AppNavigation", "Cleaning up AppNavigation")
         job.cancel() // Cancels the CoroutineScope to clean up the job and its coroutines, ensuring no background tasks run after cleanup.
     }
 }

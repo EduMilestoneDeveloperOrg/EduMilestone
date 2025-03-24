@@ -7,6 +7,7 @@ import com.edumilestone.modules01.tools.features.ProductToolsMainApp
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import com.edumilestone.app.features.FeaturesModuleMapping
+import kotlinx.coroutines.delay
 import java.io.IOException
 import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean // Import AtomicBoolean for atomic updates
@@ -47,30 +48,33 @@ object ModuleManager {
     private suspend fun loadModule(moduleName: String): ModuleLoadStatus {
         // Prevents multiple modules from loading simultaneously
         if (isLoading.get() || isUnLoading.get()) {
-            Log.d("ModuleManager", "Module operation already in progress.")
+            Log.d("ModuleManager", "Module operation already in progress. isLoading: ${isLoading.get()}, isUnLoading: ${isUnLoading.get()}")
             return ModuleLoadStatus.FAILED
         }
 
         mutex.withLock {
             if (!isLoading.compareAndSet(false, true)) {
+                Log.d("ModuleManager", "Failed to set isLoading to true. Current value: ${isLoading.get()}")
                 return ModuleLoadStatus.FAILED
             }
         }
-
         try {
-            Log.d("ModuleManager", "Starting module loading...")
-
+            Log.i("ModuleManager", "Starting module loading...")
+            Log.d("ModuleManager", "isLoading: ${isLoading.get()}, isUnLoading: ${isUnLoading.get()}")
+            delay(10) // Wait for a short period
             // Unload the current module only if there is an active module
             _activeModule.value?.let {
                 Log.d("ModuleManager", "Unloading current active module: ${it.moduleName}")
                 unloadModule(it.moduleName)
+                delay(100) // Wait for a short period
                 _activeModule.value = null // Ensure no active module after unloading
             }
+
             mutex.withLock {
                 // Check and load the requested module based on its name
                 when (moduleName) {
                     "Module01" -> {
-                        Log.d("ModuleManager", "🚀 Loading Module 01")
+                        Log.i("ModuleManager", "🚀 Loading Module 01")
                         // Update the active module state
                         _activeModule.value = ModuleInfo(moduleName, ModuleLoadStatus.LOADING) // Store both module name and status
                         // Call actual initialization for Module01
@@ -101,7 +105,7 @@ object ModuleManager {
                 _activeModule.value = ModuleInfo(moduleName, ModuleLoadStatus.SUCCESS) // Store both module name and status
                 // Update load status to SUCCESS
                 _moduleLoadStatus.value = ModuleLoadStatus.SUCCESS
-                Log.d("ModuleManager", "✅ Module [$moduleName] successfully loaded.")
+                Log.i("ModuleManager", "✅ Module [$moduleName] successfully loaded.")
                 return ModuleLoadStatus.SUCCESS
             }
         } catch (e: Exception) {
@@ -111,6 +115,7 @@ object ModuleManager {
             return _moduleLoadStatus.value // Return the updated status based on exception
         } finally {
             isLoading.set(false) // Reset loading flag
+            Log.d("ModuleManager", "isLoading set to false. Current value: ${isLoading.get()}")
         }
     }
 
@@ -124,24 +129,26 @@ object ModuleManager {
     private suspend fun unloadModule(moduleName: String): ModuleLoadStatus {
         // Prevents multiple modules from Unloading simultaneously
         if (isLoading.get() || isUnLoading.get()) {
-            Log.d("ModuleManager", "Module operation already in progress.")
+            Log.d("ModuleManager", "Module operation already in progress. isLoading: ${isLoading.get()}, isUnLoading: ${isUnLoading.get()}")
             return ModuleLoadStatus.FAILED
         }
 
         mutex.withLock {
             if (!isUnLoading.compareAndSet(false, true)) {
+                Log.d("ModuleManager", "Failed to set isUnLoading to true. Current value: ${isUnLoading.get()}")
                 return ModuleLoadStatus.FAILED
             }
         }
 
         try {
-            Log.d("ModuleManager", "❌ Unloading Module [$moduleName]")
+            Log.i("ModuleManager", "❌ Unloading Module [$moduleName]")
+            Log.d("ModuleManager", "isLoading: ${isLoading.get()}, isUnLoading: ${isUnLoading.get()}")
             // Unload the current module and handle placeholders for 02-13
-
+            delay(10) // Wait for a short period
             mutex.withLock {
                 when (moduleName) {
                     "Module01" -> {
-                        Log.d("ModuleManager", "🚀 Unloading Module 01")
+                        Log.i("ModuleManager", "🚀 Unloading Module 01")
                         _activeModule.value = ModuleInfo(moduleName, ModuleLoadStatus.UNLOADING) // Store both module name and status
                         ProductToolsMainApp.cleanupModule01()
                     }
@@ -168,7 +175,7 @@ object ModuleManager {
                 _activeModule.value = ModuleInfo(moduleName, ModuleLoadStatus.UNLOADED) // Store both module name and status
                 // Reset the active module state
                 _activeModule.value = null
-                Log.d("ModuleManager", "✅ Module [$moduleName] successfully unloaded.")
+                Log.i("ModuleManager", "✅ Module [$moduleName] successfully unloaded.")
                 // Update load status to UNLOADED
                 _moduleLoadStatus.value = ModuleLoadStatus.UNLOADED
                 return ModuleLoadStatus.UNLOADED
@@ -180,6 +187,7 @@ object ModuleManager {
             return _moduleLoadStatus.value // Return the updated status based on exception
         } finally {
             isUnLoading.set(false) // Reset unloading flag
+            Log.d("ModuleManager", "isUnLoading set to false. Current value: ${isUnLoading.get()}")
         }
     }
     /**
@@ -206,6 +214,7 @@ object ModuleManager {
         val moduleName = FeaturesModuleMapping.getModuleForFeature(feature)
 
         if (moduleName != null) {
+            Log.i("ModuleManager", "Loading module for feature: $feature")
             // If a module is found for the feature, attempt to load it
             return loadModule(moduleName)
         } else {
@@ -228,6 +237,7 @@ object ModuleManager {
         val moduleName = FeaturesModuleMapping.getModuleForFeature(feature)
 
         if (moduleName != null) {
+            Log.i("ModuleManager", "Unloading module for feature: $feature")
             // If a module is found for the feature, attempt to unload it
             return unloadModule(moduleName)
         } else {
@@ -266,9 +276,7 @@ object ModuleManager {
             is NullPointerException -> {
                 _activeModule.value = ModuleInfo(moduleName, ModuleLoadStatus.CRASHED)
                 _moduleLoadStatus.value = ModuleLoadStatus.CRASHED
-                Log.e(
-                    "ModuleManager",
-                    "❌ Null pointer exception occurred while loading/unloading the module."
+                Log.e("ModuleManager", "❌ Null pointer exception occurred while loading/unloading the module."
                 )
             }
 
