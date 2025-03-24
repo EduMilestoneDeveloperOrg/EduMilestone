@@ -57,4 +57,6 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(project(":centralcore")) // Link Central Core
+    implementation(libs.androidx.navigation.compose) // Compose Navigation
+    implementation(project(":milestone:modules01")) // ✅ Corrected name
 }

@@ -1,27 +1,28 @@
+# ✅ Versions Section: Defines version numbers for dependencies
 [versions]
-agp = "8.8.0"
-kotlin = "2.0.0"
-coreKtx = "1.15.0"
-junit = "4.13.2"
-junitVersion = "1.2.1"
-espressoCore = "3.6.1"
-lifecycleRuntimeKtx = "2.8.7"
-activityCompose = "1.10.0"
-composeBom = "2024.04.01"
-appcompat = "1.7.0"
-material = "1.12.0"
-multidex = "2.0.1"
+agp = "8.8.0"                        # Android Gradle Plugin version
+kotlin = "2.0.0"                     # Kotlin version
+coreKtx = "1.15.0"                   # AndroidX Core KTX
+junit = "4.13.2"                     # JUnit for testing
+junitVersion = "1.2.1"               # AndroidX JUnit version
+espressoCore = "3.6.1"               # Espresso for UI testing
+lifecycleRuntimeKtx = "2.8.7"        # Lifecycle KTX
+activityCompose = "1.10.0"           # Jetpack Compose Activity
+composeBom = "2024.04.01"            # Jetpack Compose BOM version
+appcompat = "1.7.0"                  # AndroidX AppCompat
+material = "1.12.0"                  # ✅ Classic Material Components for XML-based UI
+material3 = "1.2.1"                  # ✅ Jetpack Compose Material3
+multidex = "2.0.1"                   # Multidex support for older devices
+compose = "1.0.5"
 
-
-
-
+# ✅ Libraries Section: Defines dependencies using the versions above
 [libraries]
+# Core AndroidX dependencies
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-junit = { group = "junit", name = "junit", version.ref = "junit" }
-androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
-androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
-androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
-androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+androidx-multidex = { module = "androidx.multidex:multidex", version.ref = "multidex" }
+
+# ✅ Jetpack Compose dependencies
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
@@ -29,11 +30,31 @@ androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
-androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
-androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
-androidx-multidex = { module = "androidx.multidex:multidex", version.ref = "multidex" }
 
+# ✅ Fix: Add Classic Material Components (For XML-based UI)
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+
+# ✅ Jetpack Compose Material3 (For Compose-based UI)
+androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
+
+# Navigation Component for Jetpack Compose
+androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version = "2.7.7" }
+
+# AndroidX Lifecycle
+androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+
+# Activity Compose (Needed for Compose Navigation)
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+
+# ✅ Testing dependencies
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+
+# ✅ Material Icons Extended for Jetpack Compose using version catalog
+compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "compose" }
+
+# ✅ Plugins Section: Defines Gradle plugins
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
