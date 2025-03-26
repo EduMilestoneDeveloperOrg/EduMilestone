@@ -14,6 +14,7 @@ material = "1.12.0"                  # ✅ Classic Material Components for XML-b
 material3 = "1.2.1"                  # ✅ Jetpack Compose Material3
 multidex = "2.0.1"                   # Multidex support for older devices
 compose = "1.0.5"
+activityKtx = "1.8.0"
 
 # ✅ Libraries Section: Defines dependencies using the versions above
 [libraries]
@@ -53,6 +54,7 @@ androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-co
 
 # ✅ Material Icons Extended for Jetpack Compose using version catalog
 compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "compose" }
+androidx-activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "activityKtx" }
 
 # ✅ Plugins Section: Defines Gradle plugins
 [plugins]
