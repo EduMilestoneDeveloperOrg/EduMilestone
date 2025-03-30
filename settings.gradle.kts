@@ -1,35 +1,55 @@
-// Plugin management configuration for Gradle
+// =======================================
+// 🔧 Plugin Management Configuration
+// =======================================
+// Defines repositories where Gradle searches for plugins like Hilt, Kotlin, Android Gradle Plugin, etc.
+
 pluginManagement {
     repositories {
         google {
             content {
-                // Includes Android and Google-related dependencies
-                includeGroupByRegex("com\\.android.*")
-                includeGroupByRegex("com\\.google.*")
-                includeGroupByRegex("androidx.*")
+                // ✅ Includes Android and Google-related dependencies only
+                // This prevents unnecessary repository lookups for unrelated dependencies
+                includeGroupByRegex("com\\.android.*") // Android libraries (AGP, Jetpack, etc.)
+                includeGroupByRegex("com\\.google.*") // Google libraries (Firebase, Play Services, etc.)
+                includeGroupByRegex("androidx.*") // AndroidX libraries (Jetpack components, UI, etc.)
             }
         }
-        mavenCentral() // Includes dependencies from Maven Central
-        gradlePluginPortal() // Includes Gradle plugins
+        mavenCentral() // ✅ Central repository for Java/Kotlin libraries (Retrofit, Room, Coroutines)
+        gradlePluginPortal() // ✅ Repository for Gradle-specific plugins (Kotlin Gradle Plugin, Hilt, etc.)
     }
 }
 
-// Dependency resolution management
+// =======================================
+// 📦 Dependency Resolution Management
+// =======================================
+// Ensures Gradle fetches dependencies from the correct sources.
+
 dependencyResolutionManagement {
     repositories {
-        google()
-        mavenCentral()
+        google() // ✅ Official Google repository for Android dependencies
+        mavenCentral() // ✅ Official Maven repository for general Java/Kotlin dependencies
     }
 }
 
+// =======================================
+// 📂 Root Project Configuration
+// =======================================
+// Sets the **root project name** for better organization.
 
-// Root project configuration
-rootProject.name = "EduMilestone"
+rootProject.name = "EduMilestone" // ✅ The main project name (visible in Android Studio and Gradle tasks)
 
-// Including submodules in the project
-include(":app") // Main application module
-include(":centralcore") // Core module for shared functionality
-include(":milestone:modules01") // Milestone Modules 01
+// =======================================
+// 📂 Including Project Modules
+// =======================================
+// Specifies submodules that make up the project.
 
-// Setting custom directory for the milestone module
+include(":app")                  // ✅ Main application module (UI, navigation, business logic)
+include(":centralcore")           // ✅ Core module (Authentication, Networking, Shared Utilities)
+include(":milestone:modules01")   // ✅ Milestone Modules (OCR, PDF Viewer, Word Processing, etc.)
+
+// =======================================
+// 📌 Custom Directory Structure for Modules
+// =======================================
+// Maps submodules to their actual directories.
+
 project(":milestone:modules01").projectDir = file("milestone/modules01")
