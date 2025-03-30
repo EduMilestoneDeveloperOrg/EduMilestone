@@ -3,8 +3,8 @@ plugins {
     alias(libs.plugins.android.library)    // Android Library plugin: Used to define an Android library module and configure the build settings.
     alias(libs.plugins.kotlin.android)     // Kotlin Android plugin: Enables Kotlin language support for Android.
     alias(libs.plugins.kotlin.compose)     // Kotlin Compose plugin: Enables Jetpack Compose for UI within Kotlin-based Android libraries.
-    alias(libs.plugins.hilt.android)       // Apply Hilt plugin
-    alias(libs.plugins.kotlin.kapt)        // Apply Kotlin Kapt plugin
+    alias(libs.plugins.hilt.android)       // Hilt for Dependency Injection
+    alias(libs.plugins.kotlin.ksp)         // Kotlin Symbol Processing (KSP) for annotation processing
 }
 
 android {
@@ -79,11 +79,12 @@ dependencies {
     // ✅ Material Icons Extended for Jetpack Compose using version catalog
     implementation(libs.compose.material.icons.extended)  // Material Icons Extended for Compose: Adds extended icons for Material Design in Compose-based UIs.
 
-    // Hilt dependencies
-    implementation(libs.hilt.android) // Hilt dependency
-    kapt(libs.hilt.compiler) // Hilt compiler
-}
+    // ✅ Room Dependencies (Use KSP instead of KAPT)
+    implementation(libs.room.runtime)
+    ksp(libs.room.compiler)  // ✅ Use KSP for Room annotation processor
+    implementation(libs.room.ktx)  // ✅ Room KTX for Kotlin coroutines
 
-kapt {
-    correctErrorTypes = true
+    // ✅ Hilt Dependencies (Make Sure You Are Using KSP Instead of KAPT)
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)  // ✅ Hilt annotation processor
 }

@@ -2,8 +2,8 @@
 plugins {
     alias(libs.plugins.android.library)    // Plugin for Android libraries: Configures the project as an Android library, allowing it to be used as a dependency in other Android apps or libraries.
     alias(libs.plugins.kotlin.android)     // Plugin for Kotlin support: Adds Kotlin support to the project, enabling Kotlin language features.
-    alias(libs.plugins.hilt.android)       // Apply Hilt plugin
-    alias(libs.plugins.kotlin.kapt)        // Apply Kotlin Kapt plugin
+    alias(libs.plugins.hilt.android)       // Hilt for Dependency Injection
+    alias(libs.plugins.kotlin.ksp)         // Kotlin Symbol Processing (KSP) for annotation processing
 }
 
 android {
@@ -52,11 +52,12 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)  // JUnit for Android instrumentation tests: Adds JUnit support for Android-specific tests.
     androidTestImplementation(libs.androidx.espresso.core)  // Espresso for UI testing in Android: Adds Espresso for testing the UI interactions in Android apps.
 
-    // Hilt dependencies
-    implementation(libs.hilt.android) // Hilt dependency
-    kapt(libs.hilt.compiler) // Hilt compiler
-}
+    // ✅ Room Dependencies (Use KSP instead of KAPT)
+    implementation(libs.room.runtime)
+    ksp(libs.room.compiler)  // ✅ Use KSP for Room annotation processor
+    implementation(libs.room.ktx)  // ✅ Room KTX for Kotlin coroutines
 
-kapt {
-    correctErrorTypes = true
+    // ✅ Hilt Dependencies (Make Sure You Are Using KSP Instead of KAPT)
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)  // ✅ Hilt annotation processor
 }

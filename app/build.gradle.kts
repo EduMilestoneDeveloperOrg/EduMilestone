@@ -1,9 +1,9 @@
 plugins {
-    alias(libs.plugins.android.application)     // Android Application Plugin: Used to define the Android application project type and build settings.
-    alias(libs.plugins.kotlin.android)          // Kotlin Android Plugin: Adds Kotlin support for Android, enabling Kotlin language features in the app.
-    alias(libs.plugins.kotlin.compose)          // Kotlin Compose Plugin: Enables Jetpack Compose for UI in the Kotlin environment.
-    alias(libs.plugins.hilt.android)            // Apply Hilt plugin
-    alias(libs.plugins.kotlin.kapt)             // Apply Kotlin Kapt plugin
+    alias(libs.plugins.android.application)      // Android Application Plugin: Used to define the Android application project type and build settings.
+    alias(libs.plugins.kotlin.android)           // Kotlin Android Plugin: Adds Kotlin support for Android, enabling Kotlin language features in the app.
+    alias(libs.plugins.kotlin.compose)           // Kotlin Compose Plugin: Enables Jetpack Compose for UI in the Kotlin environment.
+    alias(libs.plugins.hilt.android)             // Hilt for Dependency Injection
+    alias(libs.plugins.kotlin.ksp)               // Kotlin Symbol Processing (KSP) for annotation processing
 }
 
 android {
@@ -72,11 +72,12 @@ dependencies {
     implementation(libs.androidx.navigation.compose)       // Navigation component for Jetpack Compose, used for handling screen navigation.
     implementation(project(":milestone:modules01"))         // Link to the Milestone Modules 01, where specific modules like OCR are handled.
 
-    // Hilt dependencies
-    implementation(libs.hilt.android) // Hilt dependency
-    kapt(libs.hilt.compiler) // Hilt compiler
-}
+    // ✅ Room Dependencies (Use KSP instead of KAPT)
+    implementation(libs.room.runtime)
+    ksp(libs.room.compiler)  // ✅ Use KSP for Room annotation processor
+    implementation(libs.room.ktx)  // ✅ Room KTX for Kotlin coroutines
 
-kapt {
-    correctErrorTypes = true
+    // ✅ Hilt Dependencies (Make Sure You Are Using KSP Instead of KAPT)
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)  // ✅ Hilt annotation processor
 }

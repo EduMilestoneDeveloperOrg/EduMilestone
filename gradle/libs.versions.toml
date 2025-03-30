@@ -1,7 +1,8 @@
 # ✅ Versions Section: Defines version numbers for dependencies
 [versions]
 agp = "8.8.0"                        # Android Gradle Plugin version: Defines the version of the Android Gradle Plugin used for building the app.
-kotlin = "2.0.0"                     # Kotlin version: Specifies the Kotlin version for compiling the codebase.
+kotlin = "2.1.20"                     # Kotlin version: Specifies the Kotlin version for compiling the codebase.
+ksp = "2.1.20-1.0.31"                # ksp: Ksp use for Kotlin Symbol Processing
 coreKtx = "1.15.0"                   # AndroidX Core KTX: A set of Kotlin extensions for AndroidX core libraries.
 junit = "4.13.2"                     # JUnit for testing: The JUnit version for unit tests in Java/Kotlin.
 junitVersion = "1.2.1"               # AndroidX JUnit version: Version of AndroidX JUnit used in Android instrumentation tests.
@@ -15,7 +16,8 @@ material3 = "1.2.1"                  # etpack Compose Material3: Material3 libra
 multidex = "2.0.1"                   # Multidex support for older devices: Ensures multi-dex support for Android applications on devices with low method limits.
 compose = "1.0.5"                    # Jetpack Compose version: Specifies the version of Jetpack Compose.
 activityKtx = "1.8.0"                # AndroidX Activity KTX: Kotlin extensions for Android Activity components.
-hilt = "2.45"                        # The version of Hilt being used. You can set this to the latest stable release.
+hilt = "2.44"                        # The version of Hilt being used. You can set this to the latest stable release.
+room = "2.6.1"                       # Define Room version here
 
 
 # ✅ Libraries Section: Defines dependencies using the versions above
@@ -24,6 +26,7 @@ hilt = "2.45"                        # The version of Hilt being used. You can s
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-multidex = { module = "androidx.multidex:multidex", version.ref = "multidex" }
+kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
 
 # ✅ Jetpack Compose dependencies
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
@@ -58,9 +61,14 @@ androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-co
 compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "compose" }
 androidx-activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "activityKtx" }
 
-# ✅ Hilt dependencies for Dependency Injection
-hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" } # Hilt Android dependency for DI
-hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hilt" } # Hilt Compiler dependency for code generation
+# Room (If using Room)
+room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+
+# Hilt for Dependency Injection
+hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
+hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
 
 # ✅ Plugins Section: Defines Gradle plugins
 [plugins]
@@ -68,7 +76,7 @@ android-application = { id = "com.android.application", version.ref = "agp" }   
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }      # Kotlin plugin for Android projects.
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }  # Kotlin plugin for Jetpack Compose.
 android-library = { id = "com.android.library", version.ref = "agp" }               # Plugin for Android library projects setup.
-kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" } # Add Kotlin Kapt plugin
+kotlin-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }    # Add Kotlin Ksp plugin
 
 # ✅ Add Hilt plugin to enable DI in Android projects
 hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" } # Hilt plugin for DI support across the project.
