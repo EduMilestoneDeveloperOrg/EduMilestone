@@ -15,26 +15,38 @@ object ProductToolsMainApp {
      * ✅ Initializes **Module 01** (OCR, PDF, Word Tools).
      * Called when **Module 01** is loaded.
      */
-    fun initializeModule01() {
-        Log.d("ProductToolsMainApp", "🚀 Initializing Module 01 (OCR, PDF, Word Tools)")
-
-        // Initialize all tools in Module 01
-        initializeOcrTool()
-        initializePdfTool()
-        initializeWordTool()
+    fun initializeModule01(): Boolean {
+        // Initialization logic for Module01
+        return try {
+            Log.d("ProductToolsMainApp", "🚀 Initializing Module 01 (OCR, PDF, Word Tools)")
+            // Initialize all tools in Module 01
+            initializeOcrTool()
+            initializePdfTool()
+            initializeWordTool()
+            true
+        } catch (e: Exception) {
+            // Handle any exceptions
+            false
+        }
     }
-
     /**
      * ✅ Cleans up resources when **Module 01** is unloaded.
      * Called when **Module 01** is unloaded.
      */
-    fun cleanupModule01() {
-        Log.d("ProductToolsMainApp", "❌ Cleaning up Module 01 (OCR, PDF, Word Tools)")
+    fun cleanupModule01(): Boolean {
+        return try {
+            Log.d("ProductToolsMainApp", "❌ Cleaning up Module 01 (OCR, PDF, Word Tools)")
 
-        // Cleanup all tools in Module 01
-        cleanupOcrTool()
-        cleanupPdfTool()
-        cleanupWordTool()
+            // Cleanup all tools in Module 01
+            cleanupOcrTool()
+            cleanupPdfTool()
+            cleanupWordTool()
+            true
+        }
+        catch (e: Exception) {
+            // Handle any exceptions
+            false
+        }
     }
 
     // ======================== OCR Tool ========================

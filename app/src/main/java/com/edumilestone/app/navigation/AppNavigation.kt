@@ -6,7 +6,7 @@ import com.edumilestone.app.modules.ModuleManager
 import com.edumilestone.app.modules.ModuleLoadStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
+//import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import androidx.navigation.NavController
@@ -78,10 +78,8 @@ class AppNavigation {
             // Requesting the ModuleManager to load the module based on the feature request.
             currentModuleStatus = ModuleManager.loadModuleForFeature(feature)
             Log.d("AppNavigation", "Initial module load status: $currentModuleStatus")
-            delay(10) // Wait for a short period before checking the status again
             // Wait until the module is loaded
             while (currentModuleStatus == ModuleLoadStatus.LOADING) {
-                delay(10) // Wait for a short period before checking the status again
                 currentModuleStatus = ModuleManager.getModuleLoadStatus().value
                 Log.d("AppNavigation", "Module load status: $currentModuleStatus")
             }
@@ -136,10 +134,8 @@ class AppNavigation {
             Log.d("AppNavigation", "Unloading module for feature: $feature")
             currentModuleStatus = ModuleManager.unloadModuleForFeature(feature)
             Log.d("AppNavigation", "Initial module unload status: $currentModuleStatus")
-            delay(10) // Wait for a short period before checking the status again
             // Wait until the module is unloaded
             while (currentModuleStatus == ModuleLoadStatus.UNLOADING) {
-                delay(10) // Wait for a short period before checking the status again
                 currentModuleStatus = ModuleManager.getModuleLoadStatus().value
                 Log.d("AppNavigation", "Module unload status: $currentModuleStatus")
             }
