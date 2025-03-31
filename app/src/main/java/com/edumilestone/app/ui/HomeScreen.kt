@@ -150,7 +150,7 @@ fun HomeScreen(navController: NavController, appNavigation: AppNavigation) {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Milestone Module 01",
+                            text = "Milestone Module",
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center
