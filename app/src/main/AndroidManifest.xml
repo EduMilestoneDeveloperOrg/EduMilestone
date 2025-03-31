@@ -1,7 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
+
+<!--
+    AndroidManifest.xml is the main configuration file for an Android application.
+    It defines essential app settings, permissions, and components like activities,
+    services, and receivers.
+-->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!--
+    The <application> tag represents the entire application.
+    It contains metadata, themes, backup settings, and component declarations.
+    android:name=".EduMilestoneApp" - Specifies the custom Application class,
+    necessary for initializing global dependencies (Hilt).
+    android:allowBackup="true" - Enables automatic backup of app data.
+    android:dataExtractionRules="@xml/data_extraction_rules" - Defines rules for
+    data extraction during backup.
+    android:fullBackupContent="@xml/backup_rules" - Specifies which files should be
+    included or excluded in a full backup.
+    android:icon="@mipmap/ic_launcher" - Defines the default app icon.
+    android:label="@string/app_name" - Sets the application's name displayed to users.
+    android:roundIcon="@mipmap/ic_launcher_round" - Defines the rounded app icon.
+    android:supportsRtl="true" - Enables right-to-left (RTL) language support.
+    android:theme="@style/Theme.EduMilestone" - Sets the global theme for the application.
+    tools:targetApi="31" - Specifies that the app is targeted for API level 31.
+    -->
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -12,14 +35,24 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.EduMilestone"
         tools:targetApi="31">
+
+    <!--
+    The <activity> tag declares an activity within the application.
+    android:name=".MainActivity" - Specifies the fully qualified name of the main activity.
+    android:exported="true" - Allows the activity to be launched by external apps.
+    android:theme="@style/Theme.EduMilestone" - Sets a specific theme for this activity.
+    -->
         <activity
-            android:name=".MainApplication"
+            android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name"
             android:theme="@style/Theme.EduMilestone">
+    <!--
+    The <intent-filter> makes this activity the launcher entry point.
+    <action android:name="android.intent.action.MAIN" /> - Declares this as the main entry point.
+    <category android:name="android.intent.category.LAUNCHER" /> - Makes it appear in the app launcher.
+    -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>

@@ -69,8 +69,12 @@ EduMilestone/                                           				# 📌 Root Project 
 │   │   │   │   │   ├── permissions/                    				# 🔹 Basics Handles permissions (Camera, Storage, etc.)
 │   │   │   │   │   │   ├── PermissionHandler.kt        				# 📌 Basics Permission handling logic
 │   │   │   │   │   ├── network/                        				# 🔹 Basics API calls & Networking logic
+│   │   │   │   ├── modules												# 📌 ModuleManager is responsible for managing the loading and unloading of modules in the application.
+│   │   │   │   │   ├── ModuleManager.kt                     			# 📌 ModuleManager is responsible for managing the loading and unloading of modules in the application.
+│   │   │   │   ├── navigation											# 📌 navigation is responsible for managing all ui for loaded modules in the application.
+│   │   │   │   │   ├── AppNavigation.kt								# 📌 navigation is responsible for managing all ui for loaded modules in the application.
 │   │   │   │   ├── MainApplication.kt                  				# 🔹 App Initialization (Main app logic)
-│   │   │   │   ├── EduMilestoneApp.kt                  				# 🔹 Base Application Class
+│   │   │   │   ├── MainActivity.kt                  				# 🔹 Base Application Class
 │   │   │   │   ├── dependencies.gradle                 				# 🔹 Library Dependencies
 │   │   │   ├── res/                                    				# 📌 Resources (XML files)
 │   │   │   │   ├── drawable/                           				# 🔹 Images & Icons
@@ -131,6 +135,7 @@ EduMilestone/                                           				# 📌 Root Project 
 │	│   │   │   │   │   │   │   │   ├── HandwritingProcessor.kt   		# ⭐ Recognizes handwriting
 │	│   │   │   │   │   │   │   ├── languages/                    		# 🟢 OCR Language Support
 │	│   │   │   │   │   │   │   │   ├── LanguageSupport.kt        		# ⭐ Multi-language OCR support
+│	│   │   │   │   │   │   │   ├──OCRProcessor.kt                      # 🟢 Main Files to control Everythng in OCR.
 │	│   │   │   │   ├── navigation/            							# 📌 Module 01 Product Tools Section Navigation Graphs
 │	│   │	│   ├── AndroidManifest.xml            						# 🔹 Module 01 Product Tools Section Manifest
 │	│   ├── build.gradle                       							# 🔹 Milestone Module 01 Build Configuration
