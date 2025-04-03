@@ -16,16 +16,17 @@ import com.edumilestone.modules01.tools.features.pdf.ui.PDFScreen
 import com.edumilestone.modules01.tools.features.word.ui.WordScreen
 import androidx.activity.compose.BackHandler
 import android.util.Log
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     // Declare AppNavigation instance to manage cleanup in the Activity lifecycle
     private val appNavigation = AppNavigation()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d("MainActivity", "onCreate called")
         setContent {
-            EduMilestoneApp(appNavigation = appNavigation, finishActivity = {
+            EducationMilestoneApp(appNavigation = appNavigation, finishActivity = {
                 Log.d("MainActivity", "finishActivity called")
                 finish() // Pass appNavigation and finishActivity to the composable
             })
@@ -41,7 +42,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun EduMilestoneApp(appNavigation: AppNavigation, finishActivity: () -> Unit) {
+fun EducationMilestoneApp(appNavigation: AppNavigation, finishActivity: () -> Unit) {
     val navController = rememberNavController() // Initialize NavController to handle navigation
     Log.d("EduMilestoneApp", "NavController initialized")
     // Pass AppNavigation instance to manage cleanup when the composable is disposed

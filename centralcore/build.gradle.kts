@@ -2,8 +2,8 @@
 plugins {
     alias(libs.plugins.android.library)    // Plugin for Android libraries: Configures the project as an Android library, allowing it to be used as a dependency in other Android apps or libraries.
     alias(libs.plugins.kotlin.android)     // Plugin for Kotlin support: Adds Kotlin support to the project, enabling Kotlin language features.
-    alias(libs.plugins.hilt.android)       // Hilt for Dependency Injection
     alias(libs.plugins.kotlin.ksp)         // Kotlin Symbol Processing (KSP) for annotation processing
+    alias(libs.plugins.hilt.android)       // Hilt for Dependency Injection
 }
 
 android {
