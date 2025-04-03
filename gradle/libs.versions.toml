@@ -16,7 +16,7 @@ material3 = "1.2.1"                  # etpack Compose Material3: Material3 libra
 multidex = "2.0.1"                   # Multidex support for older devices: Ensures multi-dex support for Android applications on devices with low method limits.
 compose = "1.0.5"                    # Jetpack Compose version: Specifies the version of Jetpack Compose.
 activityKtx = "1.8.0"                # AndroidX Activity KTX: Kotlin extensions for Android Activity components.
-hilt = "2.44"                        # The version of Hilt being used. You can set this to the latest stable release.
+hilt = "2.51.1"                        # The version of Hilt being used. You can set this to the latest stable release.
 room = "2.6.1"                       # Define Room version here
 
 

@@ -3,8 +3,8 @@ plugins {
     alias(libs.plugins.android.library)    // Android Library plugin: Used to define an Android library module and configure the build settings.
     alias(libs.plugins.kotlin.android)     // Kotlin Android plugin: Enables Kotlin language support for Android.
     alias(libs.plugins.kotlin.compose)     // Kotlin Compose plugin: Enables Jetpack Compose for UI within Kotlin-based Android libraries.
-    alias(libs.plugins.hilt.android)       // Hilt for Dependency Injection
     alias(libs.plugins.kotlin.ksp)         // Kotlin Symbol Processing (KSP) for annotation processing
+    alias(libs.plugins.hilt.android)       // Hilt for Dependency Injection
 }
 
 android {
@@ -29,12 +29,12 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11  // Specifies that the library source code should be compiled with Java 11.
-        targetCompatibility = JavaVersion.VERSION_11  // Specifies that the library should target Java 11 for compatibility.
+        sourceCompatibility = JavaVersion.VERSION_17  // Source compatibility: Specifies the version of Java the source code is written in (Java 17).
+        targetCompatibility = JavaVersion.VERSION_17  // Target compatibility: Specifies the version of Java that the app will be compiled to run on (Java 17).
     }
 
     kotlinOptions {
-        jvmTarget = "11"  // ✅ Use Java 11 for better performance: Sets the target JVM version for Kotlin code to Java 11 for better performance and compatibility.
+        jvmTarget = "17"  // ✅ Use Java 11 for better performance: Sets the target JVM version for Kotlin code to Java 11 for better performance and compatibility.
     }
 
     // ✅ Enable Jetpack Compose
